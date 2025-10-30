@@ -27,7 +27,7 @@ def _walk_files(base: Path, exts: set) -> List[Path]:
     volumes={"/workspace": WORKSPACE_VOLUME},
     timeout=60,
 )
-def list_available_datasets(workspace_path: str = "/workspace", subdir: str = "datasets") -> List[Dict[str, Any]]:
+def list_loaded_datasets(workspace_path: str = "/workspace", subdir: str = "datasets") -> List[Dict[str, Any]]:
     """
     List datasets in the workspace. Return structured metadata.
     """
@@ -51,7 +51,7 @@ def list_available_datasets(workspace_path: str = "/workspace", subdir: str = "d
     image=image,
     volumes={"/workspace": WORKSPACE_VOLUME},
     timeout=180,
-    secrets=[modal.Secret.from_name("aws-credentials")],  # store AWS creds in Modal
+    secrets=[modal.Secret.from_name("aws-credentials-IAM")],  # store AWS creds in Modal
 )
 def export_dataset(dataset_path: str,
                    bucket: str,

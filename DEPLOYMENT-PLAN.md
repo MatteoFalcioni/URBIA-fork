@@ -296,7 +296,7 @@ class SandboxExecutor:
 
 **Goal**: Replace local blobstore with S3 for artifacts and heavy datasets.
 
-### 2.1 Create S3 Bucket
+### 2.1 Create S3 Bucket (DONE)
 
 **AWS Console / CLI**:
 
@@ -323,7 +323,7 @@ s3://lg-urban-prod/
 - `output/artifacts/`: Transition to Glacier after 90 days, delete after 1 year
 - `input/datasets/`: No lifecycle (permanent storage)
 
-### 2.2 Upload Heavy Datasets
+### 2.2 Upload Heavy Datasets  (DONE)
 
 **One-time migration**:
 
@@ -341,7 +341,7 @@ s3://lg-urban-datasets-prod/
 └── dataset-name-3.parquet
 ```
 
-### 2.3 Configure IAM Permissions
+### 2.3 Configure IAM Permissions (DONE)
 
 **Create IAM user**: `lg-urban-modal-service`
 
@@ -374,7 +374,7 @@ modal secret create aws-credentials \
   AWS_REGION=eu-central-1
 ```
 
-### 2.4 Simplify Artifact Ingestion Pipeline
+### 2.4 Simplify Artifact Ingestion Pipeline  
 
 **Key simplification**: Modal handles all file operations. Backend only stores metadata.
 
