@@ -124,6 +124,33 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
 
     # Create code sandbox tool (will be bound to thread_id later)
     code_sandbox = make_code_sandbox()
+
+    sit_tools = [
+        folium_ortho,
+        compare_ortofoto,
+        view_3d_model,
+    ]
+
+    dataset_tools = [
+        select_dataset_tool,
+        list_datasets_tool,
+        export_datasets_tool,
+    ]
+
+    api_tools = [
+        list_catalog_tool,
+        preview_dataset_tool,
+        get_dataset_description_tool,
+        get_dataset_fields_tool,
+        is_geo_dataset_tool,
+        get_dataset_time_info_tool,
+    ]
+
+    tools = [
+        *api_tools,
+        *dataset_tools,
+        # *sit_tools,
+    ]
     
     # main agent
     agent = create_agent(
