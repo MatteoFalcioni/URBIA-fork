@@ -124,13 +124,6 @@ def write_dataset_bytes(
     filename = f"{dataset_id}.{ext.lstrip('.')}"
     path = datasets_dir / filename
     path.write_bytes(data)
-    # Ensure contents are flushed to the volume before returning
-    try:
-        with open(path, "rb", buffering=0) as fh:
-            import os as _os
-            _os.fsync(fh.fileno())
-    except Exception:
-        pass
 
     mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
     size = path.stat().st_size

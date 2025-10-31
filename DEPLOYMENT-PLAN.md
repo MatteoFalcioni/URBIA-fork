@@ -455,11 +455,11 @@ def generate_artifact_download_url(artifact: Artifact, expiry_seconds: int = 864
 
 ---
 
-## Phase 3: Migrate PostgreSQL to AWS RDS
+## Phase 3: Migrate PostgreSQL to AWS RDS  (DONE)
 
 **Goal**: Move PostgreSQL from Docker to managed AWS RDS.
 
-### 3.1 Provision RDS Instance
+### 3.1 Provision RDS Instance (DONE)
 
 **Recommended configuration**:
 
@@ -488,7 +488,7 @@ def generate_artifact_download_url(artifact: Artifact, expiry_seconds: int = 864
 postgresql+asyncpg://postgres:{password}@lg-urban-prod.xxxxx.eu-central-1.rds.amazonaws.com:5432/chat
 ```
 
-### 3.2 Database Migration
+### 3.2 Database Migration (DONE)
 
 **Export from local Docker**:
 
@@ -511,7 +511,7 @@ DATABASE_URL="postgresql+asyncpg://postgres:{password}@lg-urban-prod.xxxxx.rds.a
   alembic upgrade head
 ```
 
-### 3.3 Update Application Configuration
+### 3.3 Update Application Configuration  (DONE)
 
 **Modify** `backend/config.py` or `.env`:
 
@@ -527,7 +527,7 @@ LANGGRAPH_CHECKPOINT_DB_URL=postgresql://postgres:{password}@lg-urban-prod.xxxxx
 - Use IAM authentication for RDS (optional, advanced)
 - Enable SSL/TLS connections: `?sslmode=require` in connection string
 
-### 3.4 Test Database Connectivity
+### 3.4 Test Database Connectivity  (DONE)
 
 **Create test script** `backend/scripts/test_db.py`:
 
