@@ -72,10 +72,12 @@ def execute_code_tool(code: Annotated[str, "The python code to execute."],
     executor = get_or_create_executor(session_id)
     result = executor.execute(code)
 
-    # wrap the result in a ToolMessage
+    # take out artifacts from result and use artifact field of ToolMessage to return them
+    artifacts = result.pop("artifacts")
     return Command(update={"messages": [ToolMessage(
         content=json.dumps(result, ensure_ascii=False), 
-        tool_call_id=runtime.tool_call_id
+        tool_call_id=runtime.tool_call_id,
+        artifact=artifacts
     )]})
 
 @tool(

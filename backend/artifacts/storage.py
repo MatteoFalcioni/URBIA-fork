@@ -90,14 +90,26 @@ def s3_key_for_artifact(artifact: Artifact) -> str:
     return f"output/artifacts/{artifact.sha256[:2]}/{artifact.sha256[2:4]}/{artifact.sha256}"
 
 
-def generate_artifact_download_url(artifact: Artifact, expiry_seconds: int = 86400) -> str:
-    """Generate a presigned S3 URL for downloading the artifact."""
+def generate_presigned_url_from_s3_key(s3_key: str, expiry_seconds: int = 86400) -> str:
+    """
+    Generate a presigned S3 URL directly from an S3 key (driver dictionary).
+    Used for streaming artifacts during SSE (when driver returns raw s3_key).
+    """
     bucket = os.getenv("S3_BUCKET", "lg-urban-prod")
-    region = os.getenv("AWS_REGION")  # optional; boto3 will use default if not set
+    region = os.getenv("AWS_REGION")
     s3 = boto3.client("s3", region_name=region) if region else boto3.client("s3")
     return s3.generate_presigned_url(
         "get_object",
-        Params={"Bucket": bucket, "Key": s3_key_for_artifact(artifact)},
+        Params={"Bucket": bucket, "Key": s3_key},
         ExpiresIn=expiry_seconds,
     )
+
+
+def generate_artifact_download_url(artifact: Artifact, expiry_seconds: int = 86400) -> str:
+    """
+    Generate a presigned S3 URL for downloading the artifact from database record (accepts artifact object directly).
+    Used when fetching historical artifacts from the database.
+    """
+    s3_key = s3_key_for_artifact(artifact)
+    return generate_presigned_url_from_s3_key(s3_key, expiry_seconds)
 

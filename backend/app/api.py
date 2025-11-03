@@ -969,7 +969,25 @@ async def post_message_stream(
                             'output': tool_output_for_db
                         }
                         if artifacts:
-                            event_data['artifacts'] = artifacts
+                            # Convert S3 keys to presigned HTTP URLs for frontend display
+                            from backend.artifacts.storage import generate_presigned_url_from_s3_key
+                            converted_artifacts = []
+                            for art in artifacts:
+                                converted = {
+                                    'id': art.get('sha256', '')[:16],  # Use first 16 chars of SHA as temp ID
+                                    'name': art.get('name', 'unknown'),
+                                    'mime': art.get('mime', 'application/octet-stream'),
+                                    'size': art.get('size', 0),
+                                }
+                                # Generate presigned URL from S3 key
+                                if 's3_key' in art:
+                                    try:
+                                        converted['url'] = generate_presigned_url_from_s3_key(art['s3_key'])
+                                    except Exception as e:
+                                        logging.warning(f"Failed to generate presigned URL for {art.get('name')}: {e}")
+                                        continue  # Skip artifacts that fail URL generation
+                                converted_artifacts.append(converted)
+                            event_data['artifacts'] = converted_artifacts
                         
                         yield f"data: {json.dumps(event_data)}\n\n"
                     
