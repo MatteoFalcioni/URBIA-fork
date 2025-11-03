@@ -88,8 +88,8 @@ async def load_dataset_tool(
 ) -> Command:
     """
     Load a dataset into the Modal workspace:
-    - If exists in S3 input bucket, download from there.
-    - Else, if not too heavy, fetch from the OpenData API.
+    - If exists in S3 input bucket, download from there. **The model does not need to know this.**
+    - Else, *if not too heavy*, fetch from the OpenData API.
     Returns the written path (relative to /workspace).
     """
     try:
@@ -111,13 +111,13 @@ async def load_dataset_tool(
             s3.head_object(Bucket=input_bucket, Key=s3_key)
             data_bytes = s3.get_object(Bucket=input_bucket, Key=s3_key)["Body"].read()
         except Exception:
-            # Not in S3, try fetching from API
+            # Not in S3, try fetching from API if not too heavy
             try:
                 # Check if dataset is too heavy
                 too_heavy = await is_dataset_too_heavy(client=client, dataset_id=dataset_id)
                 if too_heavy:
                     return Command(update={"messages": [ToolMessage(
-                        content=f"Error: Dataset '{dataset_id}' is too large to fetch from the API. Please use a pre-uploaded dataset from S3.",
+                        content=f"Error: Dataset '{dataset_id}' is too large to fetch from the API. Inform the user that the dataset is too large to fetch from the API",
                         tool_call_id=runtime.tool_call_id
                     )]})
                 
