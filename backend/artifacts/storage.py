@@ -50,8 +50,8 @@ async def create_artifact(
 ) -> Artifact:
     """
     Create a new artifact record in PostgreSQL.
-    
-    Note: This does NOT copy the file to blobstore - use copy_to_blobstore() separately.
+
+    Note: File should already be in S3. This only creates the database metadata record.
     """
     artifact = Artifact(
         id=uuid.uuid4(),
