@@ -8,14 +8,14 @@ from io import StringIO
 from pathlib import Path
 
 # driver runs inside sandbox, so it has access to the workspace
+ARTIFACTS_DIR = Path("/workspace/artifacts")
 
 def scan_and_upload_artifacts(processed_artifacts: set, s3_bucket: str, s3_client):
     """Scan workspace for new artifacts and upload to S3."""
     artifacts = []
 
     # we cannot input these as parameters since the driver is a subprocess in sandbox
-    artifacts_dir = Path(os.getenv("ARTIFACTS_DIR", "/workspace/artifacts"))
-    disable_upload = os.getenv("S3_DISABLE_UPLOAD", "0") in {"1", "true", "True"}
+    artifacts_dir = ARTIFACTS_DIR
     
     if not artifacts_dir.exists():
         return artifacts
@@ -49,20 +49,19 @@ def scan_and_upload_artifacts(processed_artifacts: set, s3_bucket: str, s3_clien
                     "size": size,
                 }
 
-                if not disable_upload:
-                    # Read file content
-                    file_bytes = file_path.read_bytes()
-                    # Generate S3 key (content-addressed)
-                    s3_key = f"output/artifacts/{sha256[:2]}/{sha256[2:4]}/{sha256}"
-                    # Upload to S3
-                    s3_client.put_object(
-                        Bucket=s3_bucket,
-                        Key=s3_key,
-                        Body=file_bytes,
-                        ContentType=mime
-                    )
-                    art["s3_key"] = s3_key
-                    art["s3_url"] = f"s3://{s3_bucket}/{s3_key}"
+                # Read file content
+                file_bytes = file_path.read_bytes()
+                # Generate S3 key (content-addressed)
+                s3_key = f"output/artifacts/{sha256[:2]}/{sha256[2:4]}/{sha256}"
+                # Upload to S3
+                s3_client.put_object(
+                    Bucket=s3_bucket,
+                    Key=s3_key,
+                    Body=file_bytes,
+                    ContentType=mime
+                )
+                art["s3_key"] = s3_key
+                art["s3_url"] = f"s3://{s3_bucket}/{s3_key}"
 
                 artifacts.append(art)
                 
@@ -82,6 +81,9 @@ def driver_program():
     # Initialize S3 client
     s3_client = boto3.client('s3')
     s3_bucket = os.getenv('S3_BUCKET', 'lg-urban-prod')
+
+    if not ARTIFACTS_DIR.exists():
+        ARTIFACTS_DIR.mkdir(parents=True, exist_ok=True)
 
     # Ensure unbuffered output
     try:
