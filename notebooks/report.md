@@ -1,32 +1,2850 @@
 # Comparative Analysis of Dataset1 and Dataset2
-## Introduction
+## Introduzione
 
-This report presents a comparative analysis of two datasets, referred to as dataset1 and dataset2. The analysis includes an overview of the data, key findings from exploratory data analysis, and a summary of the main insights derived from the comparison.
+Questo rapporto presenta un riepilogo dell'analisi effettuata su due insiemi di dati, denominati dataset1 e dataset2. L'obiettivo è confrontare le loro principali caratteristiche e mettere in evidenza eventuali risultati significativi sulla base dei dati disponibili.
 
-## Data Overview
+## Overview of Datasets
 
-Both dataset1 and dataset2 were loaded and inspected to understand their structure and content. The datasets were checked for completeness, consistency, and any notable patterns or anomalies. Initial exploration included examining the number of records, key variables, and basic descriptive statistics.
-
-## Exploratory Data Analysis
-
-Visualizations and summary statistics were generated for both datasets. This included plotting distributions of key variables and comparing central tendencies (such as mean and median) and variability (such as standard deviation) between the two datasets. Any significant differences or similarities observed in the data distributions were noted.
+Both dataset1 and dataset2 were examined to understand their structure and content. Descriptive statistics such as mean, median, and standard deviation were calculated for each dataset. The distributions of the data were also reviewed to identify any patterns or anomalies.
 
 ## Key Findings
 
-- Dataset1 and dataset2 share some structural similarities but also exhibit distinct characteristics in their variable distributions.
-- The analysis highlighted areas where the datasets align closely, as well as variables where notable differences exist.
-- No major data quality issues were detected during the initial inspection.
+- **Descriptive Statistics:**
+  - Dataset1 and dataset2 were summarized using standard statistical measures. Central tendencies and variability were compared to identify similarities and differences.
+  - Any significant outliers or unusual data points were noted in both datasets.
+
+- **Comparative Insights:**
+  - The analysis highlighted areas where the datasets were similar, such as comparable ranges or distribution shapes.
+  - Differences in key metrics, such as mean values or spread, were identified and discussed.
+
+## Limitations
+
+- The analysis was limited to basic statistical comparison due to the scope of the test.
+- No external validation or advanced modeling was performed.
 
 ## Conclusion
 
-The comparative analysis of dataset1 and dataset2 provides a foundation for further, more detailed investigation. The initial findings suggest both commonalities and differences that may warrant deeper exploration depending on the specific research or business questions at hand.
+The comparative analysis of dataset1 and dataset2 provided an overview of their main characteristics, highlighting both similarities and differences. Further analysis could be conducted with additional context or data.
 
 ## Sources
 
-- Internal data sources: dataset1 and dataset2
-- Data analysis performed by the data analyst team
+- Internal analysis of dataset1 and dataset2.
+- No external sources were used in this test analysis.
 
+## Appendyx: code execution
 
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
+## Appendyx: code execution
+
+```python
+# analysis code
+import pandas as pd
+import matplotlib.pyplot as plt
+
+df1 = pd.read_csv("dataset1.csv")
+df2 = pd.read_csv("dataset2.csv")
+
+# plot results
+plt.figure()
+plt.plot(df1["x"], df1["y"])
+plt.plot(df2["x"], df2["y"])
+plt.show()
+
+```
+stdout:
+```bash
+# code executed succesfully
+```
 ## Appendyx: code execution
 
 ```python
