@@ -326,14 +326,25 @@ print(json.dumps(result))
     stdout = result.get("stdout", "").strip()
     stderr = result.get("stderr", "")
     
-    # If there's an error in stderr, include it
-    if stderr and not stdout:
+    # Parse the JSON result
+    try:
+        export_result = json.loads(stdout) if stdout else {}
+    except json.JSONDecodeError:
+        export_result = {"error": "Failed to parse export result"}
+    
+    # If there's an error, return it as content
+    if "error" in export_result or (stderr and not stdout):
         return Command(update={"messages": [ToolMessage(
-            content=json.dumps({"error": f"Export failed: {stderr}"}),
+            content=json.dumps(export_result if "error" in export_result else {"error": f"Export failed: {stderr}"}),
             tool_call_id=runtime.tool_call_id
         )]})
     
+    # Return as artifact so frontend can display download link
+    # Format matches what the code execution tool returns
+    artifacts = [export_result]  # List of artifact dicts with s3_key, name, mime, size, sha256
+    
     return Command(update={"messages": [ToolMessage(
-        content=stdout if stdout else json.dumps({"error": "No output from export"}),
-        tool_call_id=runtime.tool_call_id
+        content=f"Dataset exported successfully: {export_result.get('name', 'unknown')}",
+        tool_call_id=runtime.tool_call_id,
+        artifact=artifacts  # for frontend to display download link, artifacts go here, not in content
     )]})
