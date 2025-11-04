@@ -1,7 +1,7 @@
 from .client import BolognaOpenData
 from typing import Any, Dict, List, Optional
 import re, html
-from pathlib import Path
+import httpx
 
 # --------------
 # list datasets
@@ -350,7 +350,7 @@ async def get_dataset_time_info(
 async def is_dataset_too_heavy(
     client: BolognaOpenData, 
     dataset_id: str, 
-    threshold: int = 2_000_000  # 5MB
+    threshold: int = 5_000_000  # 5MB
 ) -> bool:
     """
     Estimate dataset size based on record count and field count.

@@ -40,7 +40,11 @@ def ensure_rds_tunnel():
     
     The tunnel is left running after tests complete for convenience.
     """
-    # Skip tunnel management if DATABASE_URL doesn't point to localhost
+    test_tunnel = False
+    # Skip tunnel management if test_tunnel is False
+    if test_tunnel == False:
+        yield
+        return
     db_url = os.getenv("DATABASE_URL", "")
     if "localhost" not in db_url and "127.0.0.1" not in db_url:
         # Not using tunnel, skip

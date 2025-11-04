@@ -54,6 +54,49 @@ def list_loaded_datasets(
         })
     return out
 
+# Accept dataset bytes from backend and persist into the sandbox, returning summary
+@app.function(
+    image=image,
+    volumes={"/workspace": WORKSPACE_VOLUME},
+    timeout=180,
+)
+def write_dataset_bytes(
+    dataset_id: str,
+    data_b64: str,
+    session_id: str,
+    ext: str = "parquet",
+    subdir: str = "datasets",
+) -> Dict[str, Any]:
+    import base64
+
+    data = base64.b64decode(data_b64)
+    base_dir = _session_base(session_id)
+    datasets_dir = base_dir / subdir
+    datasets_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"{dataset_id}.{ext.lstrip('.')}"
+    path = datasets_dir / filename
+    path.write_bytes(data)
+
+    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+    size = path.stat().st_size
+
+    summary: Dict[str, Any] = {
+        "dataset_id": dataset_id,
+        "path": str(path),
+        "rel_path": str(path.relative_to(base_dir)),
+        "mime": mime,
+        "size_bytes": size,
+        "size_mb": round(size / (1024 * 1024), 3),
+        "ext": ext.lower(),
+    }
+
+    return summary   
+
+# --------------------- (!) Deprecated (!) ---------------------
+# NOTE: this function is actually useless when we need to export from a running sandbox: 
+# Modal volumes do not sync to outside functions unless we terminate the sandbox (which defeats the purpose of the sandbox)
+# we leave it for legacy reasons, but it is not used in the new codebase.
 @app.function(
     image=image,
     volumes={"/workspace": WORKSPACE_VOLUME},
@@ -119,42 +162,3 @@ def export_dataset(
         }
     except Exception as e:
         return {"error": f"S3 upload failed: {e}"}
-
-# Accept dataset bytes from backend and persist into the sandbox, returning summary
-@app.function(
-    image=image,
-    volumes={"/workspace": WORKSPACE_VOLUME},
-    timeout=180,
-)
-def write_dataset_bytes(
-    dataset_id: str,
-    data_b64: str,
-    session_id: str,
-    ext: str = "parquet",
-    subdir: str = "datasets",
-) -> Dict[str, Any]:
-    import base64
-
-    data = base64.b64decode(data_b64)
-    base_dir = _session_base(session_id)
-    datasets_dir = base_dir / subdir
-    datasets_dir.mkdir(parents=True, exist_ok=True)
-
-    filename = f"{dataset_id}.{ext.lstrip('.')}"
-    path = datasets_dir / filename
-    path.write_bytes(data)
-
-    mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
-    size = path.stat().st_size
-
-    summary: Dict[str, Any] = {
-        "dataset_id": dataset_id,
-        "path": str(path),
-        "rel_path": str(path.relative_to(base_dir)),
-        "mime": mime,
-        "size_bytes": size,
-        "size_mb": round(size / (1024 * 1024), 3),
-        "ext": ext.lower(),
-    }
-
-    return summary   
