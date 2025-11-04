@@ -69,11 +69,21 @@ def export_dataset(
     Upload a file from the Modal workspace to S3 and return metadata.
     """
     import boto3
+    import time
 
     base = _session_base(session_id)
     full = base / dataset_path
-    if not full.exists():
-        return {"error": f"File not found: {dataset_path}"}
+    
+    # Retry logic to handle volume sync delays
+    # Files created in sandbox take time to sync to volume before being visible to other functions
+    max_retries = 20  # up to ~10s to allow Volume sync
+    for attempt in range(max_retries):
+        if full.exists():
+            break
+        if attempt < max_retries - 1:
+            time.sleep(0.5)
+    else:
+        return {"error": f"File not found after {max_retries * 0.5}s (volume sync timeout): {dataset_path}"}
 
     try:
         data = full.read_bytes()
