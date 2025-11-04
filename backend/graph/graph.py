@@ -10,8 +10,8 @@ from pydantic import SecretStr
 from dotenv import load_dotenv
 import os
 
-from backend.graph.summarizer_prompt import summarizer_prompt
-from backend.graph.prompt import PROMPT
+from backend.graph.prompts.summarizer import summarizer_prompt
+from backend.graph.prompts.analyst import PROMPT
 from backend.graph.tools.sandbox_tools import execute_code_tool, list_loaded_datasets_tool, load_dataset_tool, export_dataset_tool, terminate_session_executor
 from backend.graph.tools.api_tools import (
     list_catalog_tool,
