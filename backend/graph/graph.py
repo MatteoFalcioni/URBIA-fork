@@ -12,7 +12,7 @@ import os
 
 from backend.graph.prompts.summarizer import summarizer_prompt
 from backend.graph.prompts.analyst import PROMPT
-from backend.graph.tools.report_tools import assign_to_report_writer_tool, write_report_tool # , get_sources_tool
+from backend.graph.tools.report_tools import assign_to_report_writer_tool, write_report_tool, write_source_tool
 from backend.graph.prompts.report import report_prompt
 from backend.graph.tools.sandbox_tools import execute_code_tool, list_loaded_datasets_tool, load_dataset_tool, export_dataset_tool, terminate_session_executor
 from backend.graph.tools.api_tools import (
@@ -145,6 +145,7 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
 
     report_tools = [
         assign_to_report_writer_tool,
+        write_source_tool,
     ]
 
     tools = [

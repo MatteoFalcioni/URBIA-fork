@@ -68,19 +68,29 @@ def write_report_tool(
 # probably should make a modify_report() tool that can be used to modify an existing report after it was approved. But maybe that can 
 # be frontend only.
 
+@tool
+def write_source_tool(dataset_id: Annotated[str, "the dataset_id, i.e. the source"], runtime: ToolRuntime) -> Command:
+    """
+    Write a source to the list of sources. If the dataset is already in the list, return a message that says so..
+    """
+    state = runtime.state
+    sources = state["sources"]
+    if dataset_id not in sources:
+        sources_update = [dataset_id]
+        return Command(update={"messages" : [ToolMessage(content=f"Dataset {dataset_id} added to sources.", tool_call_id=runtime.tool_call_id)], "sources" : sources_update})
+    else:
+        return Command(update={"messages" : [ToolMessage(content=f"Dataset {dataset_id} already in sources.", tool_call_id=runtime.tool_call_id)]})
 
 @tool
-def get_sources_tool(
+def read_sources_tool(
     runtime: ToolRuntime
 ) -> Command:
     """
     Get the sources used in the analysis.
     """
     state = runtime.state
-
     sources = state["sources"]
-
-    sources_str = "\n".join([f"- {source['desc']}: {source['url']}" for source in sources.values()])
+    sources_str = "\n".join([f"- {source}" for source in sources])
 
     return Command(
         update = {
@@ -88,6 +98,10 @@ def get_sources_tool(
         }
     )
 
+
+# this one below could actually be a node; it chunks the code logs before getting to the fact checker. 
+# the fact checker only gets the read_code_logs_tool.
+from langchain_text_splitters import TokenTextSplitter
 @tool 
 def get_code_logs_tool(
     runtime: ToolRuntime
@@ -102,9 +116,8 @@ def get_code_logs_tool(
 
     code_logs_str = "\n".join([f"```python\n{code_log['input']}\n```\nstdout: ```bash\n{code_log['stdout']}\n```\nstderr: ```bash\n{code_log['stderr']}\n```" for code_log in code_logs])
 
-    # here we split the code logs into big chunks of 7500 tokens each;
-    from langchain_text_splitters import TokenTextSplitter
-    splitter = TokenTextSplitter(model_name="gpt-4.1", chunk_size=7500, chunk_overlap=1000)
+    # here we split the code logs into big chunks of 5000 tokens each;
+    splitter = TokenTextSplitter(model_name="gpt-4.1", chunk_size=5000, chunk_overlap=1000)
     code_logs_chunks = splitter.split_text(code_logs_str)
     num_chunks = len(code_logs_chunks)
 

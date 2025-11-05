@@ -217,8 +217,8 @@ async def load_dataset_tool(
 def list_loaded_datasets_tool(runtime: ToolRuntime) -> Command:
     """
     Lists datasets already loaded in the current workspace.
-    NOTE: we do not list S3 datasets because we don't ant the model to get confused. 
-    BUT when we load, we check if they are present in S3 first and if so we donwload from there.
+    NOTE: we do not list S3 datasets because we don't want the model to get confused. 
+    BUT when we load, we check if datasets are present in S3 first and, if so, we download from there.
     """
     
     thread_id = get_thread_id()

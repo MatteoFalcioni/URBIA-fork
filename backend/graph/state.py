@@ -90,7 +90,7 @@ class MyState(AgentState):
     summary : str   # No reducer - just replace
     token_count : Annotated[int, update_token_count]
     # write report features 
-    sources : Annotated[dict[str, dict[str, str]], merge_dicts_nested] # key is the dataset id, value is a dict with desc, url
+    sources : Annotated[list[str], list_add] # list of dataset ids
     reports: Annotated[dict[str, str], merge_dicts]  # key is the title, value is the content 
     write_report : Annotated[bool, bool_replace]
     last_report_title : Annotated[str, str_replace]
