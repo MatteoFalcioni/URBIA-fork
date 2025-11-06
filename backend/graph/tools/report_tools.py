@@ -63,6 +63,13 @@ def write_report_tool(
                 })  
         else:
             raise ValueError(f"Invalid response type: {response['type']}")
+    
+    elif state["report_status"] == "pending":  # means this is an edit to an existing report
+        print(f"***report status is 'pending' in write_report_tool: editing existing report in write_report_tool")
+        pass  # edit does not need interruptions
+    
+    else:
+        raise ValueError(f"Invalid report status: {state['report_status']}. Since we got to the write_report_tool from the report writer node, the report status can only be assigned or pending.")
 
     report_dict = {report_title: report_content}  # show this to the user in frontend in a nice way (like sidebar with the full report in markdown format)
 

@@ -353,7 +353,7 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
         # If there are edit instructions, add them to the messages and invoke the agent with the new messages
         if report_status == "pending": # edits: revise existing report
             print("***revising existing report in write_report_node")
-            msg = f"Revise the report based on the following instructions: {state['edit_instructions']}"
+            msg = f"Revise the report based on the following instructions: {state['edit_instructions']}. The report you need to revise is: {state['reports'][state['last_report_title']]}"
             messages = state["messages"] + [HumanMessage(content=msg)]
         elif report_status == "assigned": # we got here so the user wants report to be written, first time -> no edits: write a new report
             print("***writing new report in write_report_node")
@@ -364,7 +364,7 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
 
         # invoke on full state but use messages with new sys msg
         print("***invoking report writer agent in write_report_node")
-        result = await agent_report_writer.ainvoke({**state, "messages": messages})  # here the agent uses the write_report_tool: reort status can be either rejected or pending now
+        result = await agent_report_writer.ainvoke({**state, "messages": messages})  # here the agent uses the write_report_tool: report status can be either rejected or pending now
         last_msg = result["messages"][-1]
 
         goto = route_from_report_status(result["report_status"])  # if report = pending -> human approval, if report = rejected -> end flow
