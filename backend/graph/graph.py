@@ -13,7 +13,8 @@ import os
 
 from backend.graph.prompts.summarizer import summarizer_prompt
 from backend.graph.prompts.analyst import PROMPT
-from backend.graph.tools.report_tools import assign_to_report_writer_tool, read_code_logs_tool, read_sources_tool, write_report_tool, write_source_tool
+from backend.graph.tools.report_tools import assign_to_report_writer_tool, read_code_logs_tool, read_sources_tool, write_report_tool, write_source_tool, set_analysis_objectives_tool, read_analysis_objectives_tool
+from backend.graph.tools.review_tools import approve_analysis_tool, reject_analysis_tool, complete_review_tool, error_occurred_tool, update_completeness_score, update_reliability_score, update_correctness_score
 from backend.graph.prompts.report import report_prompt
 from backend.graph.prompts.reviewer import reviewer_prompt
 from backend.graph.tools.sandbox_tools import execute_code_tool, list_loaded_datasets_tool, load_dataset_tool, export_dataset_tool
@@ -128,14 +129,12 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
         compare_ortofoto,
         view_3d_model,
     ]
-
     dataset_tools = [
         load_dataset_tool,
         list_loaded_datasets_tool,
         export_dataset_tool,
         execute_code_tool,
     ]
-
     api_tools = [
         list_catalog_tool,
         preview_dataset_tool,
@@ -145,8 +144,8 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
         get_dataset_time_info_tool,
     ]
     report_tools = [
-        assign_to_report_writer_tool,
         write_source_tool,
+        set_analysis_objectives_tool,
     ]
     tools = [
         *api_tools,
@@ -191,27 +190,49 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
     
     agent_report_writer = create_agent(
         model=report_writer_llm,
-        tools=[write_report_tool], #, get_sources_tool],
+        tools=[write_report_tool, read_sources_tool, read_analysis_objectives_tool],
         system_prompt=report_prompt,
         name="agent_report_writer",
         state_schema=MyState,
     )
 
     # ======= REVIEWER AGENT =======
-    # use claude 4.5 sonnet for reviewer
-    reviewer_kwargs = {"model": "claude-sonnet-4-5"}
-    if user_api_keys and user_api_keys.get('anthropic_key'):
-        reviewer_kwargs['api_key'] = SecretStr(user_api_keys['anthropic_key'])
-    elif os.getenv('ANTHROPIC_API_KEY'):
-        reviewer_kwargs['api_key'] = SecretStr(os.getenv('ANTHROPIC_API_KEY'))
-    
-    reviewer_llm = ChatAnthropic(**reviewer_kwargs)
+    # use gpt-4.1 for reviewer
+    reviewer_kwargs = {"model": "gpt-4.1"}
+    if user_api_keys and user_api_keys.get('openai_key'):
+        reviewer_kwargs['api_key'] = SecretStr(user_api_keys['openai_key'])
+    elif os.getenv('OPENAI_API_KEY'):
+        reviewer_kwargs['api_key'] = SecretStr(os.getenv('OPENAI_API_KEY'))
+
+    from langchain.agents.middleware import SummarizationMiddleware    
+    reviewer_llm = ChatOpenAI(**reviewer_kwargs)
     agent_reviewer = create_agent(
         model=reviewer_llm,
-        tools=[read_code_logs_tool, read_sources_tool],
+        tools=[
+            read_code_logs_tool, 
+            read_sources_tool, 
+            read_analysis_objectives_tool,
+            assign_to_report_writer_tool, 
+            approve_analysis_tool, 
+            reject_analysis_tool, 
+            complete_review_tool, 
+            error_occurred_tool, 
+            update_completeness_score, 
+            update_reliability_score, 
+            update_correctness_score
+        ],
         system_prompt=reviewer_prompt,
         name="agent_reviewer",
         state_schema=MyState,
+        # just for safety: summarize here as well to avoid token issues
+        middleware=[
+            SummarizationMiddleware(
+                model="gpt-4.1",
+                max_tokens_before_summary=20000,  # Trigger summarization at 20000 tokens
+                messages_to_keep=10,  # Keep last 20 messages after summary
+                summary_prompt="Summarize the conversation keeping the relevant details about the analysis performed.",  
+            ),
+        ]
     )
 
     # ======= GRAPH =======
@@ -230,14 +251,16 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
             (b) **If the flag is approved** --> **continues flow.** (analysis is correct and complete)
             (c) **If the flag is limit_exceeded** --> **ends flow.** (too many re-routings to analyst)
         """
-        analysis_status = state.get("analysis_status", "none")  # defaults to none it it wasn't initialized yet (correct, none is default value)
+        analysis_status = state.get("analysis_status", "pending")  # defaults to pending it it wasn't initialized yet (correct, pending is default value)
         print(f"***routing function in review_routing: analysis status is {analysis_status}")
         if analysis_status == "rejected":
             return "analyst_agent"
         elif analysis_status == "approved":
             return "continue_flow"
-        elif analysis_status == "limit_exceeded":
+        elif analysis_status == "limit_exceeded" or analysis_status == "error_occurred":
             return "__end__"
+
+        return "continue_flow"
 
     def write_report_or_end_flow(state: MyState):
         """
@@ -382,7 +405,7 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
         if token_count > 5000:
             # here we split the code logs into big chunks of 5000 tokens each, with big overlap for more context;
             splitter = TokenTextSplitter(
-                encoding_name="cl100k_base", # cl100k_base is more model agnostic, and it's the same that get_num_tokens uses for claude models
+                model_name=reviewer_llm.model_name, # cl100k_base is more model agnostic, and it's the same that get_num_tokens uses for claude models
                 chunk_size=5000, 
                 chunk_overlap=1000
             )  
@@ -411,12 +434,22 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
         """
         Invokes the reviewer agent.
         Workflow:
-            - (1) **performs review**: invokes the reviewer agent: it automatically sees chat history, and with its tools is able to read sources and code chunks, and to read the analysis initial goal.
+            - (1) **checks how many tries were made**: we check how many times the analysis was re-routed to analyst with comments. If it was more than 3, we end flow.
+            - (2) **performs review**: invokes the reviewer agent: it automatically sees chat history, and with its tools is able to read sources and code chunks, and to read the analysis initial goal.
             It evaluates if the analysis performed was correct and complete.
-            - (2) **routing decision**: the reviewer internally decides whether to go to report writer or reroute to analyst with comments. It does so with its tools, 
+            - (3) **routing decision**: the reviewer internally decides whether to go to report writer or reroute to analyst with comments. It does so with its tools, 
             `assign_to_report_writer` and `reroute_to_analyst`. These change state flags, respectively: report_status and analysis_status.
-            - (3) **checks how many tries were made**: we check how many times the analysis was re-routed to analyst with comments. If it was more than 3, we end flow.
         """
+        # Check if re-routing to analyst limit exceeded BEFORE invoking
+        reroute_count = state.get("reroute_count", 0)
+        if reroute_count >= 3:
+            return Command(
+                goto="__end__",
+                update={
+                    "analysis_status": "limit_exceeded",
+                    "messages": [HumanMessage(content="Analysis re-routing limit exceeded (3 attempts). Ending flow.")]
+                }
+            )
 
         # invoke the reviewer agent
         result = await agent_reviewer.ainvoke(state)
@@ -432,6 +465,7 @@ def make_graph(model_name: str | None = None, temperature: float | None = None, 
                     "analysis_status": "pending", # reset analysis status to pending (default value)
                     "reroute_count": 1,  # increment reroute count
                     "analysis_comments": result["analysis_comments"], # add comments from reviewer
+                    "messages": [HumanMessage(content=f"Your analysis was rejected by the reviewer. Please improve it based on the following feedback:\n\n{result['analysis_comments']}")]
                 }
             )
         elif review_route == "__end__":

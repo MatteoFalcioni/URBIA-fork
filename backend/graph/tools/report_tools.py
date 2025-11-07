@@ -131,3 +131,30 @@ def read_code_logs_tool(
         return Command(update={"messages" : [ToolMessage(content=f"Invalid index: {index}. Index must be between 0 and {len(code_logs_chunks) - 1}.", tool_call_id=runtime.tool_call_id)]})
     
     return Command(update={"messages" : [ToolMessage(content=f"Code log chunk {index}: \n\n{code_logs_chunks[index]}", tool_call_id=runtime.tool_call_id)]})
+
+@tool
+def set_analysis_objectives_tool(
+    objectives: Annotated[list[str], "The new analysis objectives"],
+    runtime: ToolRuntime
+) -> Command:
+    """
+    Set the analysis objectives.
+    Arguments:
+        objectives: The new analysis objectives
+    """
+    print(f"***setting analysis objectives in set_analysis_objectives_tool: {objectives}")
+    return Command(update={
+        "messages": [ToolMessage(content=f"Analysis objectives set to: {objectives}", tool_call_id=runtime.tool_call_id)],
+        "analysis_objectives": objectives
+    })
+
+@tool
+def read_analysis_objectives_tool(
+    runtime: ToolRuntime
+) -> Command:
+    """
+    Use this to read the analysis objectives.
+    """
+    state = runtime.state
+    objectives = state["analysis_objectives"]
+    return Command(update={"messages" : [ToolMessage(content=f"Analysis objectives: {objectives}", tool_call_id=runtime.tool_call_id)]})

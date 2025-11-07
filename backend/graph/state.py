@@ -56,7 +56,7 @@ def list_replace_str(
     left: list[str] | None,
     right: list[str] | None
 ) -> list[str]:
-    """Replace list of strings entirely instead of concatenating. Used for code logs chunks"""
+    """Replace list of strings entirely instead of concatenating. Used for code logs chunks and analysis objectives"""
     if left is None:
         left = []
     if right is None:
@@ -88,10 +88,47 @@ def status_replace(
 
     return right
 
+def status_replace_analysis(
+    left: Literal["pending", "approved", "rejected", "limit_exceeded", "error_occurred"] | None,
+    right: Literal["pending", "approved", "rejected", "limit_exceeded", "error_occurred"] | None
+) -> Literal["pending", "approved", "rejected", "limit_exceeded", "error_occurred"]:
+    if left is None:
+        left = "pending"
+    if right is None:
+        right = "pending"
+    return right
+
+def int_add(left: int | None, right: int | None) -> int:
+    """Increment a counter. Used for reroute_count"""
+    if left is None:
+        left = 0
+    if right is None:
+        right = 0
+    return left + right
+
+def int_replace(left: int | None, right: int | None) -> int:
+    if left is None:
+        left = 0
+    if right is None:
+        right = 0
+    return right
+
+def float_replace(left: float | None, right: float | None) -> float:
+    if left is None:
+        left = 0.0
+    if right is None:
+        right = 0.0
+    return right
+
 class MyState(AgentState):
+    """
+    Custom state for the graph.
+    """
+    
     # summary and token count features (core)
     summary : Annotated[str, str_replace]
     token_count : Annotated[int, update_token_count]
+    
     # report features 
     sources : Annotated[list[str], list_add] # list of dataset ids
     reports: Annotated[dict[str, str], merge_dicts]  # key is the title, value is the content 
@@ -100,3 +137,16 @@ class MyState(AgentState):
     edit_instructions : Annotated[str, str_replace]  # instructions for the report writer to edit the report
     code_logs: Annotated[list[dict[str, str]], list_add]  # list of dicts (we need chronological order!), each dicts is input and output of a code block (out can be stdout or stderr or both)
     code_logs_chunks: Annotated[list[str], list_replace_str]  # list of strings, each string is a chunk of already ordered code logs - we first stringify code_logs correclty, then separate it in chunks (see get_code_logs_tool in report_tools.py)
+    # review features
+
+    ## analysys 
+    analysis_status : Annotated[Literal["pending", "approved", "rejected", "limit_exceeded", "error_occurred"], status_replace_analysis]
+    analysis_comments : Annotated[str, str_replace]  # comments for the analyst to improve the analysis
+    analysis_objectives: Annotated[list[str], list_replace_str] # objectives of the analysis
+    ## reroute afte review
+    reroute_count: Annotated[int, int_add] # counter of how many times the analysis was re-routed to analyst with comments
+    ## scores
+    completeness_score : Annotated[int, int_replace]
+    reliability_score : Annotated[int, int_replace]
+    correctness_score : Annotated[int, int_replace]
+    final_score : Annotated[float, float_replace]
