@@ -1,5 +1,9 @@
 # RDS Quick Start
 
+We may upgrade the pipeline to leverage Amazon RDS in order to scale databases: in that case we will need to test the pipeline with this workflow.
+
+Therefore we will also need Bastion tunneling (see below).
+
 ## TL;DR - Run Tests
 
 ```bash

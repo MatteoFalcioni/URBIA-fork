@@ -24,7 +24,7 @@ import pytest
 import pytest_asyncio
 import boto3
 from botocore.client import Config
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
 from backend.main import app
 from backend.db.session import ASYNC_SESSION_MAKER, ENGINE
@@ -82,7 +82,7 @@ async def test_ingest_artifact_and_head_metadata():
         )
         art_id = desc["id"]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.get(f"/api/artifacts/{art_id}/head")
         assert r.status_code == 200
         data = r.json()
@@ -120,7 +120,7 @@ async def test_download_redirects_to_s3_presigned_url():
         )
         art_id = desc["id"]
 
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r = await client.get(f"/api/artifacts/{art_id}", follow_redirects=False)
         assert r.status_code in (302, 307)
         loc = r.headers.get("location") or r.headers.get("Location")

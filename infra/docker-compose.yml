@@ -16,6 +16,23 @@ services:
       timeout: 5s
       retries: 10
 
+  # Run Alembic migrations automatically after database is ready
+  migrations:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.migrations
+    container_name: chat_migrations
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ALEMBIC_DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-chat}
+    volumes:
+      - ../backend:/app/backend
+      - ../alembic.ini:/app/alembic.ini
+    command: alembic upgrade head
+    restart: "no"  # Don't restart after migrations complete
+
   adminer:
     image: adminer:4
     container_name: chat_adminer

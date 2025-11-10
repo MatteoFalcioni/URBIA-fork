@@ -7,7 +7,7 @@ import { useState, useEffect } from 'react';
 import { ChevronDown, Plus, Sun, Moon, MessageCircle, Pencil, Archive, ArchiveRestore, Trash2, CheckSquare, Square, Menu } from 'lucide-react';
 import { SignInButton, UserButton, useUser } from '@clerk/clerk-react';
 import { useChatStore } from '@/store/chatStore';
-import { createThread, updateThreadTitle, archiveThread, unarchiveThread, deleteThread, listThreads } from '@/utils/api';
+import { createThread, updateThreadTitle, archiveThread, unarchiveThread, deleteThread, listThreads, listMessages } from '@/utils/api';
 import { AnimatedTitle } from './AnimatedTitle';
 
 interface ThreadSelectorProps {
@@ -20,6 +20,7 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
   const threads = useChatStore((state) => state.threads);
   const addThread = useChatStore((state) => state.addThread);
   const updateThread = useChatStore((state) => state.updateThread);
+  const removeThread = useChatStore((state) => state.removeThread);
   const setThreads = useChatStore((state) => state.setThreads);
   const currentThreadId = useChatStore((state) => state.currentThreadId);
   const setCurrentThreadId = useChatStore((state) => state.setCurrentThreadId);
@@ -27,6 +28,8 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
   const setTheme = useChatStore((state) => state.setTheme);
   const setContextUsage = useChatStore((state) => state.setContextUsage);
   const defaultConfig = useChatStore((state) => state.defaultConfig);
+  const setCurrentReport = useChatStore((state) => state.setCurrentReport);
+  const setAnalysisObjectives = useChatStore((state) => state.setAnalysisObjectives);
   
   // Bulk selection
   const selectedThreadIds = useChatStore((state) => state.selectedThreadIds);
@@ -57,6 +60,41 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
     loadThreads();
   }, [userId, setThreads]);
 
+  // Auto-select or auto-create thread on mount
+  useEffect(() => {
+    // Only run if threads are loaded and no thread is selected
+    if (threads.length === 0 || currentThreadId) return;
+    
+    // Select the most recent thread (first in list)
+    const mostRecentThread = threads[0];
+    if (mostRecentThread) {
+      setCurrentThreadId(mostRecentThread.id);
+      setContextUsage(0, defaultConfig.context_window ?? 30000);
+    }
+  }, [threads, currentThreadId, setCurrentThreadId, setContextUsage, defaultConfig.context_window]);
+
+  // Auto-create thread if none exist
+  useEffect(() => {
+    // Only run once after initial load if no threads exist
+    if (threads.length > 0 || currentThreadId || isCreating) return;
+    
+    async function autoCreateThread() {
+      setIsCreating(true);
+      try {
+        const newThread = await createThread(userId, 'New chat');
+        addThread(newThread);
+        setCurrentThreadId(newThread.id);
+        setContextUsage(0, defaultConfig.context_window ?? 30000);
+      } catch (err) {
+        console.error('Failed to auto-create thread:', err);
+      } finally {
+        setIsCreating(false);
+      }
+    }
+    
+    autoCreateThread();
+  }, [threads.length, currentThreadId, isCreating, userId, addThread, setCurrentThreadId, setContextUsage, defaultConfig.context_window]);
+
   /**
    * Toggle between light and dark themes only
    */
@@ -69,6 +107,20 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
   async function handleCreateThread() {
     setIsCreating(true);
     try {
+      // Delete current thread if it has no messages
+      if (currentThreadId) {
+        try {
+          const messages = await listMessages(currentThreadId);
+          if (messages.length === 0) {
+            await deleteThread(currentThreadId);
+            removeThread(currentThreadId);
+          }
+        } catch (err) {
+          console.error('Failed to check/delete empty thread:', err);
+          // Continue creating new thread even if deletion fails
+        }
+      }
+
       const newThread = await createThread(userId, 'New chat');
       addThread(newThread);
       setCurrentThreadId(newThread.id);
@@ -84,16 +136,40 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
 
   // Select thread handler
   async function handleSelectThread(threadId: string) {
+    // Delete current thread if it has no messages before switching
+    if (currentThreadId && currentThreadId !== threadId) {
+      try {
+        const messages = await listMessages(currentThreadId);
+        if (messages.length === 0) {
+          await deleteThread(currentThreadId);
+          removeThread(currentThreadId);
+        }
+      } catch (err) {
+        console.error('Failed to check/delete empty thread:', err);
+        // Continue switching threads even if deletion fails
+      }
+    }
+
     setCurrentThreadId(threadId);
     setIsOpen(false);
-    // Fetch actual context usage from LangGraph state
+    // Fetch actual context usage, objectives, and report from LangGraph state
     try {
       const { getThreadState } = await import('@/utils/api');
       const state = await getThreadState(threadId);
       setContextUsage(state.token_count, state.context_window);
+      setAnalysisObjectives(state.analysis_objectives || []);
+      
+      // Load report if available
+      if (state.report_content && state.report_title) {
+        setCurrentReport(state.report_content, state.report_title);
+      } else {
+        setCurrentReport(null, null);
+      }
     } catch (err) {
       console.error('Failed to fetch thread state:', err);
       setContextUsage(0, defaultConfig.context_window ?? 30000);
+      setAnalysisObjectives([]);
+      setCurrentReport(null, null);
     }
   }
 
@@ -194,13 +270,13 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
   return (
     <div className="relative">
       {/* Top bar */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+      <div className="flex items-center justify-between gap-2 p-3 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
         {/* Left side: Collapse button + Thread selector */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {/* Collapse button */}
           <button
             onClick={onCollapse}
-            className="p-2 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200 shadow-sm hover:shadow-md group"
+            className="p-2 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200 shadow-sm hover:shadow-md group flex-shrink-0"
             title="Hide sidebar"
           >
             <Menu size={16} className="text-gray-500 dark:text-slate-400 group-hover:text-gray-700 dark:group-hover:text-slate-200 transition-colors" />
@@ -209,7 +285,7 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
           {/* Thread selector */}
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200 min-w-0 shadow-sm hover:shadow-md"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700 transition-all duration-200 min-w-0 shadow-sm hover:shadow-md flex-1"
           >
             <MessageCircle size={16} className="text-gray-500 dark:text-slate-400 flex-shrink-0" />
             <AnimatedTitle 
@@ -222,7 +298,7 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
         </div>
 
         {/* Controls */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 flex-shrink-0">
           <button
             onClick={handleCreateThread}
             disabled={isCreating}

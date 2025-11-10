@@ -7,6 +7,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send } from 'lucide-react';
 import { useChatStore } from '@/store/chatStore';
 import { ContextIndicator } from './ContextIndicator';
+import { InterruptModal } from './InterruptModal';
 import { useSSE } from '@/hooks/useSSE';
 import { createThread, updateThreadConfig, listMessages, getThreadState } from '@/utils/api';
 import type { Message } from '@/types/api';
@@ -26,8 +27,12 @@ export function MessageInput() {
   const setThreads = useChatStore((state) => state.setThreads);
   const setContextUsage = useChatStore((state) => state.setContextUsage);
   const setIsSummarizing = useChatStore((state) => state.setIsSummarizing);
+  const setIsReviewing = useChatStore((state) => state.setIsReviewing);
+  const setAnalysisObjectives = useChatStore((state) => state.setAnalysisObjectives);
+  const setCurrentReport = useChatStore((state) => state.setCurrentReport);
   
   const [input, setInput] = useState('');
+  const [interruptData, setInterruptData] = useState<any>(null); // Track graph interrupts (HITL)
   const streamingRef = useRef(''); // Accumulate streaming tokens (mirror to avoid stale closure on onDone)
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const addToolDraft = useChatStore((state) => state.addToolDraft);
@@ -46,16 +51,26 @@ export function MessageInput() {
   // Update context indicator when thread changes
   useEffect(() => {
     if (currentThreadId) {
-      // Fetch current context state for the thread
+      // Fetch current context state, objectives, and report for the thread
       getThreadState(currentThreadId).then((state) => {
         setContextUsage(state.token_count, state.context_window);
+        setAnalysisObjectives(state.analysis_objectives || []);
+        
+        // Load report if available
+        if (state.report_content && state.report_title) {
+          setCurrentReport(state.report_content, state.report_title);
+        } else {
+          setCurrentReport(null, null);
+        }
       }).catch((err) => {
         console.error('Failed to fetch thread state:', err);
         // Fallback to default
         setContextUsage(0, effectiveMaxTokens);
+        setAnalysisObjectives([]);
+        setCurrentReport(null, null);
       });
     }
-  }, [currentThreadId, setContextUsage, effectiveMaxTokens]);
+  }, [currentThreadId, setContextUsage, setAnalysisObjectives, setCurrentReport, effectiveMaxTokens]);
 
   // Auto-resize textarea
   const adjustTextareaHeight = useCallback(() => {
@@ -71,7 +86,7 @@ export function MessageInput() {
   }, [input, adjustTextareaHeight]);
   
   // SSE hook with handlers for streaming events
-  const { sendMessage, isStreaming } = useSSE({
+  const { sendMessage, resumeThread, isStreaming } = useSSE({
     onThinking: (content) => {
       // Set thinking block (Claude extended thinking)
       if (currentThreadId) {
@@ -122,6 +137,28 @@ export function MessageInput() {
     onSummarizing: (status) => {
       // Show/hide summarization animation
       setIsSummarizing(status === 'start');
+    },
+    onReviewing: (status) => {
+      // Show/hide reviewing animation
+      setIsReviewing(status === 'start');
+    },
+    onObjectivesUpdated: (objectives) => {
+      // Update objectives in real-time when analyst sets them
+      setAnalysisObjectives(objectives);
+    },
+    onReportWritten: (title, content) => {
+      // Display report in artifacts panel in real-time
+      setCurrentReport(content, title);
+      // Auto-open artifacts panel if not already open
+      const isArtifactsPanelOpen = useChatStore.getState().isArtifactsPanelOpen;
+      if (!isArtifactsPanelOpen) {
+        useChatStore.getState().toggleArtifactsPanel();
+      }
+    },
+    onInterrupt: (value) => {
+      // Graph interrupted - show HITL modal
+      console.log('Graph interrupted:', value);
+      setInterruptData(value);
     },
     onDone: async (messageId) => {
       console.log('onDone called with messageId:', messageId);
@@ -302,6 +339,18 @@ export function MessageInput() {
       {/* Inline typing now handled in MessageList; no bottom preview */}
 
       {/* Active tool indicators are now rendered inline in the chat list */}
+      
+      {/* Interrupt Modal - Show when graph is interrupted for HITL */}
+      {interruptData && currentThreadId && (
+        <InterruptModal
+          interruptData={interruptData}
+          onResume={(resumeValue) => {
+            resumeThread(currentThreadId, resumeValue);
+            setInterruptData(null);
+          }}
+          onCancel={() => setInterruptData(null)}
+        />
+      )}
     </form>
   );
 }

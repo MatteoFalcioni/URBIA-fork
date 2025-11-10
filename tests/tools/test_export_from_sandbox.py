@@ -212,8 +212,14 @@ print("Dataset created")
         
         # Extract the result
         tool_message = command.update["messages"][0]
-        export_result = json.loads(tool_message.content)
         
+        # The export result is in the artifact field, not content
+        # Content just has a success message
+        assert "Dataset exported successfully" in tool_message.content
+        assert tool_message.artifact is not None
+        assert len(tool_message.artifact) > 0
+        
+        export_result = tool_message.artifact[0]
         print(f"Export result: {export_result}")
         
         # Verify success

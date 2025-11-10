@@ -15,7 +15,6 @@ Requirements:
 
 import os
 import uuid
-import base64
 import json
 import pytest
 import boto3
@@ -191,8 +190,8 @@ class TestLoadDatasetTool:
         dataset_id = f"test-api-dataset-{test_session_id[:8]}"
         
         # Mock the API helpers
-        with patch("backend.graph.sandbox_tools.is_dataset_too_heavy", new_callable=AsyncMock) as mock_heavy, \
-             patch("backend.graph.sandbox_tools.get_dataset_bytes", new_callable=AsyncMock) as mock_get:
+        with patch("backend.graph.tools.sandbox_tools.is_dataset_too_heavy", new_callable=AsyncMock) as mock_heavy, \
+             patch("backend.graph.tools.sandbox_tools.get_dataset_bytes", new_callable=AsyncMock) as mock_get:
             
             # Configure mocks
             mock_heavy.return_value = False  # Not too heavy
@@ -248,8 +247,8 @@ class TestExportDatasetTool:
         
         # 1. Load dataset into sandbox (mock API)
         print("  Step 1: Loading dataset into sandbox...")
-        with patch("backend.graph.sandbox_tools.is_dataset_too_heavy", new_callable=AsyncMock) as mock_heavy, \
-             patch("backend.graph.sandbox_tools.get_dataset_bytes", new_callable=AsyncMock) as mock_get:
+        with patch("backend.graph.tools.sandbox_tools.is_dataset_too_heavy", new_callable=AsyncMock) as mock_heavy, \
+             patch("backend.graph.tools.sandbox_tools.get_dataset_bytes", new_callable=AsyncMock) as mock_get:
             
             mock_heavy.return_value = False
             mock_get.return_value = test_dataset_bytes
@@ -371,8 +370,8 @@ class TestIntegrationFlow:
         dataset_id = f"integration-test-{test_session_id[:8]}"
         print(f"📥 Step 1: Loading dataset {dataset_id}...")
         
-        with patch("backend.graph.sandbox_tools.is_dataset_too_heavy", new_callable=AsyncMock) as mock_heavy, \
-             patch("backend.graph.sandbox_tools.get_dataset_bytes", new_callable=AsyncMock) as mock_get:
+        with patch("backend.graph.tools.sandbox_tools.is_dataset_too_heavy", new_callable=AsyncMock) as mock_heavy, \
+             patch("backend.graph.tools.sandbox_tools.get_dataset_bytes", new_callable=AsyncMock) as mock_get:
             
             mock_heavy.return_value = False
             mock_get.return_value = test_dataset_bytes
@@ -391,7 +390,7 @@ class TestIntegrationFlow:
         # 2. List datasets
         print(f"📋 Step 2: Listing datasets...")
         time.sleep(5)  # Brief pause for Modal volume to sync
-        list_cmd = list_datasets_tool.func(mock_runtime)
+        list_cmd = list_loaded_datasets_tool.func(mock_runtime)
         list_result = json.loads(list_cmd.update["messages"][0].content)
         
         print(f"✅ Found {len(list_result)} datasets: {[d['path'] for d in list_result]}")

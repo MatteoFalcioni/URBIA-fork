@@ -7,7 +7,6 @@ from uuid import UUID
 import logging
 import uuid
 import json
-import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -527,18 +526,30 @@ async def get_thread_state(
     try:
         state_snapshot = await graph.aget_state(config)
         token_count = state_snapshot.values.get("token_count", 0) if state_snapshot.values else 0
+        analysis_objectives = state_snapshot.values.get("analysis_objectives", []) if state_snapshot.values else []
+        reports = state_snapshot.values.get("reports", {}) if state_snapshot.values else {}
+        last_report_title = state_snapshot.values.get("last_report_title", "") if state_snapshot.values else ""
         context_window = cfg.context_window if (cfg and cfg.context_window) else DEFAULT_CONTEXT_WINDOW
+        
+        # Get the current report content if available
+        current_report_content = reports.get(last_report_title, "") if last_report_title else ""
         
         return {
             "token_count": token_count,
-            "context_window": context_window
+            "context_window": context_window,
+            "analysis_objectives": analysis_objectives,
+            "report_title": last_report_title,
+            "report_content": current_report_content
         }
     except Exception as e:
         # If state doesn't exist yet (new thread), return 0
         context_window = cfg.context_window if (cfg and cfg.context_window) else DEFAULT_CONTEXT_WINDOW
         return {
             "token_count": 0,
-            "context_window": context_window
+            "context_window": context_window,
+            "analysis_objectives": [],
+            "report_title": "",
+            "report_content": ""
         }
 
 
@@ -827,7 +838,7 @@ async def post_message_stream(
                 # Extract text from content dict; LangChain messages expect string content
                 user_text = payload.content.get("text", str(payload.content))
                 state = {"messages": [{"role": "user", "content": user_text}]}
-                config = {"configurable": {"thread_id": str(thread_id)}, "recursion_limit": 40}
+                config = {"configurable": {"thread_id": str(thread_id)}, "recursion_limit": 150}
                 
                 # Context update will be emitted after agent finishes processing
                 
@@ -838,6 +849,7 @@ async def post_message_stream(
                 current_step_content = ""  # Accumulate ALL content in current step
                 current_step_has_tools = False
                 current_langgraph_step = None
+                current_node = None  # Track current node to skip output from report_writer
                 # Track all streamed content for database storage (only final response)
                 all_streamed_content = ""
                 
@@ -849,9 +861,25 @@ async def post_message_stream(
                     checkpoint_ns = event_meta.get("langgraph_checkpoint_ns", "")
                     langgraph_step = event_meta.get("langgraph_step")
                     
+                    # Check for graph interrupts (for human-in-the-loop)
+                    data = event.get("data", {})
+                    chunk = data.get("chunk")
+                    
+                    # Interrupt comes as a dict chunk with '__interrupt__' key
+                    if chunk and isinstance(chunk, dict) and '__interrupt__' in chunk:
+                        logging.info(f"🛑 INTERRUPT DETECTED - chunk keys: {chunk.keys()}")
+                        # Graph has been interrupted - send interrupt event to frontend
+                        interrupt_tuple = chunk["__interrupt__"]  # It's a tuple: (Interrupt(...),)
+                        interrupt_obj = interrupt_tuple[0]  # Get the Interrupt object from tuple
+                        interrupt_value = interrupt_obj.value  # Get the actual value dict
+                        logging.info(f"Interrupt value: {interrupt_value}")
+                        yield f"data: {json.dumps({'type': 'interrupt', 'value': to_jsonable(interrupt_value)})}\n\n"
+                        # Stream will end naturally after interrupt, no break needed
+                    
                     # Detect step change - decide if previous step was thinking or final response
                     if langgraph_step != current_langgraph_step and current_langgraph_step is not None:
-                        if current_step_content:
+                        # Only output if previous step was NOT from report_writer, reviewer_agent or human_approval
+                        if current_step_content and current_node not in ["report_writer", "reviewer_agent", "human_approval"]:
                             if current_step_has_tools:
                                 # Previous step had tool calls - it was thinking (Claude pattern)
                                 yield f"data: {json.dumps({'type': 'thinking', 'content': current_step_content})}\n\n"
@@ -865,11 +893,12 @@ async def post_message_stream(
                         current_step_has_tools = False
                     
                     current_langgraph_step = langgraph_step
+                    current_node = node  # Track which node we're in
                     
                     # Stream token chunks from the LLM (but not from summarizer or its sub-calls)
                     if event_type == "on_chat_model_stream":
-                        # Skip if we're inside summarization context (agent called by summarizer)
-                        if checkpoint_ns.startswith("summarize_conversation:"):
+                        # Skip if we're inside summarization, reviewer, or report writer context
+                        if checkpoint_ns.startswith("summarize_conversation:") or checkpoint_ns.startswith("reviewer_agent:") or checkpoint_ns.startswith("report_writer:"):
                             continue
                         
                         chunk = event.get("data", {}).get("chunk")
@@ -887,6 +916,10 @@ async def post_message_stream(
                     # Detect summarization start
                     elif event_type == "on_chat_model_start" and checkpoint_ns.startswith("summarize_conversation:"):
                         yield f"data: {json.dumps({'type': 'summarizing', 'status': 'start'})}\n\n"
+                    
+                    # Detect reviewer start
+                    elif event_type == "on_chat_model_start" and checkpoint_ns.startswith("reviewer_agent:"):
+                        yield f"data: {json.dumps({'type': 'reviewing', 'status': 'start'})}\n\n"
                     
                     # Detect summarization end
                     elif event_type == "on_chain_end" and node == "agent":
@@ -907,6 +940,10 @@ async def post_message_stream(
                         from backend.config import CONTEXT_WINDOW as DEFAULT_CONTEXT_WINDOW
                         max_tokens = cfg.context_window if cfg and cfg.context_window else DEFAULT_CONTEXT_WINDOW
                         yield f"data: {json.dumps({'type': 'context_update', 'tokens_used': 0, 'max_tokens': max_tokens})}\n\n"
+                    
+                    # Detect reviewer end
+                    elif event_type == "on_chat_model_end" and checkpoint_ns.startswith("reviewer_agent:"):
+                        yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
                 
                     # Stream tool execution start
                     elif event_type == "on_tool_start":
@@ -917,6 +954,22 @@ async def post_message_stream(
                     elif event_type == "on_tool_end":   
                         raw_input = event.get("data", {}).get("input")
                         raw_output = event.get("data", {}).get("output")
+                        
+                        # Emit objectives_updated event if set_analysis_objectives_tool was called
+                        if event_name == "set_analysis_objectives_tool":
+                            if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
+                                objectives = raw_output.update.get("analysis_objectives", [])
+                                if objectives:
+                                    yield f"data: {json.dumps({'type': 'objectives_updated', 'objectives': objectives})}\n\n"
+                        
+                        # Emit report_written event if write_report_tool was called
+                        if event_name == "write_report_tool":
+                            if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
+                                reports = raw_output.update.get("reports", {})
+                                report_title = raw_output.update.get("last_report_title", "")
+                                if reports and report_title and report_title in reports:
+                                    report_content = reports[report_title]
+                                    yield f"data: {json.dumps({'type': 'report_written', 'title': report_title, 'content': report_content})}\n\n"
                         
                         # Extract artifacts and content from Command -> ToolMessage if present
                         artifacts = None
@@ -987,6 +1040,7 @@ async def post_message_stream(
                                                 filename=art.get('name', 'unknown'),
                                                 mime=art.get('mime', 'application/octet-stream'),
                                                 size=art.get('size', 0),
+                                                session_id=str(t.id),  # Modal sandbox session ID
                                                 tool_call_id=tool_call_id
                                             )
                                         except Exception as e:
@@ -1034,7 +1088,8 @@ async def post_message_stream(
                             assistant_content = output.content
                 
                 # Handle the last step's content after the loop ends
-                if current_step_content:
+                # Only output if last step was NOT from report_writer, reviewer_agent or human_approval
+                if current_step_content and current_node not in ["report_writer", "reviewer_agent", "human_approval"]:
                     if current_step_has_tools:
                         # Last step had tool calls - it was thinking
                         yield f"data: {json.dumps({'type': 'thinking', 'content': current_step_content})}\n\n"
@@ -1095,6 +1150,259 @@ async def post_message_stream(
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+# Resume endpoint for handling interrupts (human-in-the-loop)
+class ResumeRequest(BaseModel):
+    resume_value: dict  # The resume data from user (type: accept/reject/edit, etc.)
+
+
+@router.post("/threads/{thread_id}/resume")
+async def resume_thread(
+    thread_id: str,
+    payload: ResumeRequest,
+    session: AsyncSession = Depends(get_session),
+):
+    """
+    Resume a thread after an interrupt.
+    
+    Uses the same graph instance (via singleton checkpointer) and config to resume execution.
+    
+    Resume value format depends on the interrupt:
+    - For write_report approval: {"type": "accept"} or {"type": "reject"}
+    - For human approval: {"type": "accept"} or {"type": "edit", "edit_instructions": "..."}
+    """
+    from backend.graph.graph import make_graph
+    from backend.main import get_thread_lock, _checkpointer_cm
+    from backend.graph.context import set_db_session, set_thread_id
+    from langgraph.types import Command
+    import uuid as uuid_module
+    
+    # Verify checkpointer is initialized
+    if not _checkpointer_cm:
+        raise HTTPException(status_code=500, detail="Checkpointer not initialized")
+    
+    # Get thread to verify it exists
+    result = await session.execute(select(Thread).where(Thread.id == UUID(thread_id)))
+    t = result.scalar_one_or_none()
+    if not t:
+        raise HTTPException(status_code=404, detail="Thread not found")
+    
+    # Get thread config
+    cfg_result = await session.execute(select(Config).where(Config.thread_id == UUID(thread_id)))
+    cfg = cfg_result.scalar_one_or_none()
+    
+    # Get user API keys
+    user_api_keys = await get_user_api_keys_for_llm(t.user_id, session)
+    
+    # Create graph with SAME config as original (checkpointer will restore state)
+    graph = make_graph(
+        model_name=cfg.model if cfg else None,
+        temperature=cfg.temperature if cfg else None,
+        system_prompt=cfg.system_prompt if cfg else None,
+        context_window=cfg.context_window if cfg else None,
+        checkpointer=_checkpointer_cm[0],  # Reuse global singleton checkpointer
+        user_api_keys=user_api_keys,
+    )
+    
+    # SAME config with SAME thread_id - checkpointer will restore state
+    config = {"configurable": {"thread_id": str(thread_id)}, "recursion_limit": 40}
+    
+    # Stream response using SSE
+    async def stream_resume():
+        try:
+            lock = get_thread_lock(str(thread_id))
+            async with lock:
+                # Set context variables for tools
+                set_db_session(session)
+                set_thread_id(uuid_module.UUID(str(thread_id)))
+                
+                # Variables to track thinking vs final response (same as POST /messages)
+                current_step_content = ""
+                current_step_has_tools = False
+                current_langgraph_step = None
+                current_node = None  # Track current node to skip output from report_writer
+                all_streamed_content = ""
+                
+                # Resume with Command(resume=resume_value) using SAME graph and config
+                async for event in graph.astream_events(Command(resume=payload.resume_value), config, version="v2"):
+                    event_type = event.get("event")
+                    event_name = event.get("name", "")
+                    event_meta = event.get("metadata", {})
+                    node = event_meta.get("langgraph_node")
+                    checkpoint_ns = event_meta.get("langgraph_checkpoint_ns", "")
+                    langgraph_step = event_meta.get("langgraph_step")
+                    
+                    # Check for another interrupt (same logic as POST /messages)
+                    data = event.get("data", {})
+                    chunk = data.get("chunk")
+                    
+                    if chunk and isinstance(chunk, dict) and '__interrupt__' in chunk:
+                        logging.info(f"🛑 INTERRUPT DETECTED (resume) - chunk keys: {chunk.keys()}")
+                        interrupt_tuple = chunk["__interrupt__"]  # It's a tuple: (Interrupt(...),)
+                        interrupt_obj = interrupt_tuple[0]  # Get the Interrupt object from tuple
+                        interrupt_value = interrupt_obj.value  # Get the actual value dict
+                        logging.info(f"Interrupt value (resume): {interrupt_value}")
+                        yield f"data: {json.dumps({'type': 'interrupt', 'value': to_jsonable(interrupt_value)})}\n\n"
+                        # Stream will end naturally after interrupt
+                    
+                    # Detect step change - same logic as POST /messages
+                    if langgraph_step != current_langgraph_step and current_langgraph_step is not None:
+                        # Only output if previous step was NOT from report_writer, reviewer_agent or human_approval
+                        if current_step_content and current_node not in ["report_writer", "reviewer_agent", "human_approval"]:
+                            if current_step_has_tools:
+                                yield f"data: {json.dumps({'type': 'thinking', 'content': current_step_content})}\n\n"
+                            else:
+                                all_streamed_content += current_step_content
+                                yield f"data: {json.dumps({'type': 'token', 'content': current_step_content})}\n\n"
+                        current_step_content = ""
+                        current_step_has_tools = False
+                    
+                    current_langgraph_step = langgraph_step
+                    current_node = node  # Track which node we're in
+                    
+                    # Stream token chunks (same as POST /messages)
+                    if event_type == "on_chat_model_stream":
+                        # Skip if in summarization, reviewer, or report writer context
+                        if checkpoint_ns.startswith("summarize_conversation:") or checkpoint_ns.startswith("reviewer_agent:") or checkpoint_ns.startswith("report_writer:"):
+                            continue
+                        
+                        chunk = event.get("data", {}).get("chunk")
+                        if chunk:
+                            if hasattr(chunk, "tool_call_chunks") and chunk.tool_call_chunks:
+                                current_step_has_tools = True
+                            
+                            if hasattr(chunk, "content") and chunk.content:
+                                chunk_text = extract_text_from_content(chunk.content)
+                                if chunk_text:
+                                    current_step_content += chunk_text
+                    
+                    # Detect reviewer start
+                    elif event_type == "on_chat_model_start" and checkpoint_ns.startswith("reviewer_agent:"):
+                        yield f"data: {json.dumps({'type': 'reviewing', 'status': 'start'})}\n\n"
+                    
+                    # Detect reviewer end
+                    elif event_type == "on_chat_model_end" and checkpoint_ns.startswith("reviewer_agent:"):
+                        yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
+                    
+                    # Tool events (same as POST /messages)
+                    elif event_type == "on_tool_start":
+                        tool_input = event.get("data", {}).get("input")
+                        yield f"data: {json.dumps({'type': 'tool_start', 'name': event_name, 'input': to_jsonable(tool_input)})}\n\n"
+                    
+                    elif event_type == "on_tool_end":
+                        raw_output = event.get("data", {}).get("output")
+                        
+                        # Emit objectives_updated event if set_analysis_objectives_tool was called
+                        if event_name == "set_analysis_objectives_tool":
+                            if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
+                                objectives = raw_output.update.get("analysis_objectives", [])
+                                if objectives:
+                                    yield f"data: {json.dumps({'type': 'objectives_updated', 'objectives': objectives})}\n\n"
+                        
+                        # Emit report_written event if write_report_tool was called
+                        if event_name == "write_report_tool":
+                            if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
+                                reports = raw_output.update.get("reports", {})
+                                report_title = raw_output.update.get("last_report_title", "")
+                                if reports and report_title and report_title in reports:
+                                    report_content = reports[report_title]
+                                    yield f"data: {json.dumps({'type': 'report_written', 'title': report_title, 'content': report_content})}\n\n"
+                        
+                        artifacts = None
+                        tool_content = None
+                        
+                        if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
+                            messages = raw_output.update.get("messages", [])
+                            if messages and len(messages) > 0:
+                                tool_msg = messages[0]
+                                if hasattr(tool_msg, "artifact") and tool_msg.artifact:
+                                    artifacts = tool_msg.artifact
+                                if hasattr(tool_msg, "content"):
+                                    tool_content = tool_msg.content
+                        elif hasattr(raw_output, "artifact"):
+                            artifacts = raw_output.artifact
+                            if hasattr(raw_output, "content"):
+                                tool_content = raw_output.content
+                        
+                        tool_output_for_sse = {"content": tool_content} if isinstance(tool_content, str) else to_jsonable(tool_content) if tool_content else to_jsonable(raw_output)
+                        
+                        event_data = {
+                            'type': 'tool_end',
+                            'name': event_name,
+                            'output': tool_output_for_sse
+                        }
+                        if artifacts:
+                            # Handle artifacts same as POST /messages
+                            from backend.artifacts.storage import generate_presigned_url_from_s3_key
+                            from backend.artifacts.ingest import ingest_artifact_metadata
+                            from backend.db.session import ASYNC_SESSION_MAKER
+                            
+                            # Extract tool_call_id
+                            tool_call_id = None
+                            if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
+                                messages = raw_output.update.get("messages", [])
+                                if messages and len(messages) > 0:
+                                    tool_msg = messages[0]
+                                    if hasattr(tool_msg, "tool_call_id"):
+                                        tool_call_id = tool_msg.tool_call_id
+                            
+                            # Save artifacts to DB
+                            async with ASYNC_SESSION_MAKER() as artifact_sess:
+                                for art in artifacts:
+                                    if 's3_key' in art and tool_call_id:
+                                        try:
+                                            await ingest_artifact_metadata(
+                                                session=artifact_sess,
+                                                thread_id=t.id,
+                                                s3_key=art['s3_key'],
+                                                sha256=art.get('sha256', ''),
+                                                filename=art.get('name', 'unknown'),
+                                                mime=art.get('mime', 'application/octet-stream'),
+                                                size=art.get('size', 0),
+                                                session_id=str(t.id),
+                                                tool_call_id=tool_call_id
+                                            )
+                                        except Exception as e:
+                                            logging.warning(f"Failed to ingest artifact {art.get('name')}: {e}")
+                                await artifact_sess.commit()
+                            
+                            # Convert for SSE
+                            converted_artifacts = []
+                            for art in artifacts:
+                                converted = {
+                                    'id': art.get('sha256', '')[:16],
+                                    'name': art.get('name', 'unknown'),
+                                    'mime': art.get('mime', 'application/octet-stream'),
+                                    'size': art.get('size', 0),
+                                }
+                                if 's3_key' in art:
+                                    try:
+                                        converted['url'] = generate_presigned_url_from_s3_key(art['s3_key'])
+                                    except Exception as e:
+                                        logging.warning(f"Failed to generate presigned URL: {e}")
+                                        continue
+                                converted_artifacts.append(converted)
+                            event_data['artifacts'] = converted_artifacts
+                        
+                        yield f"data: {json.dumps(event_data)}\n\n"
+                
+                # Handle last step's content
+                # Only output if last step was NOT from report_writer, reviewer_agent or human_approval
+                if current_step_content and current_node not in ["report_writer", "reviewer_agent", "human_approval"]:
+                    if current_step_has_tools:
+                        yield f"data: {json.dumps({'type': 'thinking', 'content': current_step_content})}\n\n"
+                    else:
+                        all_streamed_content += current_step_content
+                        yield f"data: {json.dumps({'type': 'token', 'content': current_step_content})}\n\n"
+                
+                yield f"data: {json.dumps({'type': 'done', 'message_id': None})}\n\n"
+                
+        except Exception as e:
+            logging.error(f"Resume failed for thread {thread_id}: {e}", exc_info=True)
+            yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+    
+    return StreamingResponse(stream_resume(), media_type="text/event-stream")
 
 
 # API Key Management Endpoints

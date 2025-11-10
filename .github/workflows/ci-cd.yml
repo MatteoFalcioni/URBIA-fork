@@ -1,0 +1,262 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # Detect which parts of the codebase changed
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      modal: ${{ steps.filter.outputs.modal }}
+      backend: ${{ steps.filter.outputs.backend }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            modal:
+              - 'backend/modal_runtime/**'
+            backend:
+              - 'backend/**'
+              - 'requirements.txt'
+            migrations:
+              - 'backend/db/alembic/versions/**'
+              - 'backend/db/models.py'
+
+  # Test Modal functions with integration tests
+  test-modal:
+    name: Test Modal Functions
+    needs: detect-changes
+    if: needs.detect-changes.outputs.modal == 'true' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run Modal integration tests
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        run: |
+          echo "Running Modal integration tests..."
+          pytest backend/modal_runtime/tests/ -v --tb=short
+      
+      - name: Test Modal driver (local)
+        run: |
+          echo "Testing Modal driver locally..."
+          pytest backend/modal_runtime/tests/test_driver_e2e.py -v
+        env:
+          S3_DISABLE_UPLOAD: "1"
+
+  # Test database migrations with Docker Postgres
+  test-migrations:
+    name: Test Database Migrations
+    needs: detect-changes
+    if: needs.detect-changes.outputs.migrations == 'true' || needs.detect-changes.outputs.backend == 'true' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      # Start Docker Compose with the infra setup
+      - name: Create Docker network
+        run: docker network create langgraph-network || true
+      
+      - name: Start Postgres with Docker Compose
+        run: |
+          cd infra
+          docker compose up -d db
+          
+      - name: Wait for Postgres to be ready
+        run: |
+          echo "Waiting for Postgres..."
+          for i in {1..30}; do
+            if docker exec chat_pg pg_isready -U postgres; then
+              echo "Postgres is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+      
+      - name: Run migrations
+        env:
+          ALEMBIC_DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/chat
+        run: |
+          echo "Running Alembic migrations..."
+          alembic upgrade head
+          alembic current
+      
+      - name: Test migration rollback/upgrade cycle
+        env:
+          ALEMBIC_DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/chat
+        run: |
+          echo "Testing migration cycle..."
+          alembic downgrade -1
+          alembic upgrade head
+          echo "✅ Migration cycle successful"
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd infra
+          docker compose down -v
+
+  # Test API endpoints
+  test-api:
+    name: Test API Endpoints
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Create Docker network
+        run: docker network create langgraph-network || true
+      
+      - name: Start Postgres with Docker Compose
+        run: |
+          cd infra
+          docker compose up -d db
+      
+      - name: Wait for Postgres to be ready
+        run: |
+          echo "Waiting for Postgres..."
+          for i in {1..30}; do
+            if docker exec chat_pg pg_isready -U postgres; then
+              echo "Postgres is ready!"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+      
+      - name: Run migrations
+        env:
+          ALEMBIC_DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/chat
+        run: alembic upgrade head
+      
+      - name: Run API tests
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/chat
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+        run: |
+          echo "Running API health checks..."
+          pytest tests/api/ -v --tb=short
+      
+      - name: Cleanup
+        if: always()
+        run: |
+          cd infra
+          docker compose down -v
+
+  # Lint code (optional but recommended)
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install linting tools
+        run: pip install ruff black
+      
+      - name: Run ruff
+        run: ruff check backend/ --exit-zero
+      
+      - name: Check formatting with black
+        run: black --check backend/ --diff || true
+
+  # Deploy Modal functions (only on main branch push, only if Modal files changed)
+  deploy-modal:
+    name: Deploy Modal Functions
+    needs: [detect-changes, test-modal]
+    if: |
+      github.ref == 'refs/heads/main' && 
+      github.event_name == 'push' &&
+      needs.detect-changes.outputs.modal == 'true'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      
+      - name: Install Modal
+        run: pip install modal
+      
+      - name: Deploy Modal functions
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          echo "Deploying Modal functions..."
+          modal deploy backend.modal_runtime.functions
+          echo "✅ Modal functions deployed successfully"
+      
+      - name: Verify deployment
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          echo "Verifying deployment..."
+          modal app list | grep lg-urban-executor && echo "✅ Deployment verified" || echo "⚠️ App not found in list"
+

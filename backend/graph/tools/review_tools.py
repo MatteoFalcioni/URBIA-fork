@@ -1,0 +1,135 @@
+from typing_extensions import Annotated
+from langchain.tools import tool, ToolRuntime
+from langchain_core.messages import ToolMessage
+from langgraph.types import Command, Literal
+
+@tool
+async def approve_analysis_tool(
+    runtime: ToolRuntime
+) -> Command:   
+    """
+    Use this to approve the analysis.
+
+    """
+    print(f"***approving analysis in approve_analysis_tool")
+    return Command(
+        update={
+            "analysis_status": "approved",
+            "messages" : [ToolMessage(content=f"Analysis approved", tool_call_id=runtime.tool_call_id)],
+        }
+    )
+
+@tool
+async def approve_analysis_and_request_report_tool(
+    reason: Annotated[str, "Brief reason why a report is warranted"],
+    runtime: ToolRuntime
+) -> Command:
+    """Approve the analysis AND request a written report. Use for complex/comprehensive analyses."""
+    return Command(update={
+        "analysis_status": "approved",
+        "report_status": "assigned",
+        "messages": [ToolMessage(content=f"Analysis approved. Report requested: {reason}", tool_call_id=runtime.tool_call_id)],
+    })
+
+@tool
+async def reject_analysis_tool(
+    comments: Annotated[str, "Comments for the analyst to improve the analysis"],
+    runtime: ToolRuntime
+) -> Command:   
+    """
+    Use this to reject the analysis, with constructive criticism for the analyst to improve the analysis.
+    Arguments:
+        comments: Constructive criticism for the analyst to improve the analysis
+    """
+    print(f"***rejecting analysis in reject_analysis_tool: {comments}")
+    return Command(
+        update={
+            "analysis_status": "rejected",
+            "analysis_comments": comments,
+            "messages" : [ToolMessage(content=f"Analysis rejected with critiques:\n {comments}", tool_call_id=runtime.tool_call_id)],
+        }
+    )
+
+@tool
+async def end_flow_tool(
+    reason: Annotated[str, "A brief explanation of the reason why the flow should end"],
+    runtime: ToolRuntime
+) -> Command:
+    """
+    Use this to end the flow.
+    Arguments:
+        reason: A brief explanation of the reason why the flow should end
+    """
+    print(f"***ending flow in end_flow_tool: {reason}")
+    return Command(update={
+        "messages" : [ToolMessage(content=f"Flow ended: {reason}", tool_call_id=runtime.tool_call_id)],
+        "analysis_status": "end_flow"  # we use this flag to indicate that the flow should end
+    })
+
+@tool 
+async def update_completeness_score(grade: Annotated[int, "The grade of the completeness score"], runtime: ToolRuntime) -> Command:
+    """
+    Use this to update the completeness score.
+    Arguments:
+        grade: The grade of the completeness score
+    """
+    print(f"***updating completeness score in update_completeness_score: {grade}")
+    return Command(update={
+        "messages" : [ToolMessage(content=f"Completeness score updated to: {grade}", tool_call_id=runtime.tool_call_id)],
+        "completeness_score": grade
+    })
+
+@tool 
+async def update_correctness_score(grade: Annotated[int, "The grade of the correctness score"], runtime: ToolRuntime) -> Command:
+    """
+    Use this to update the correctness score.
+    Arguments:
+        grade: The grade of the correctness score
+    """
+    print(f"***updating correctness score in update_correctness_score: {grade}")
+    return Command(update={
+        "messages" : [ToolMessage(content=f"Correctness score updated to: {grade}", tool_call_id=runtime.tool_call_id)],
+        "correctness_score": grade
+    })
+
+
+@tool 
+async def update_reliability_score(score: Annotated[int, "The score of the reliability score"], runtime: ToolRuntime) -> Command:
+    """
+    Use this to update the reliability score.
+    Arguments:
+        score: The score of the reliability score
+    Returns:
+        the normalized reliability score between 0 and 10
+    """
+    sources_list = runtime.state['sources']
+    
+    # normalize the score between 0 and 10
+    # get the number of sources: thats the max of the grade (+1 for every right, -1 for every wrong -> ex: 7 sources, grade in [-7,+7])
+    n_sources = len(sources_list)   # it's max grade ossible (if 7 sources, max grade is 7)
+    # 10 : n_sources = normalized_score : score -> normalized_score = score * (10 / n_sources)
+    normalized_score = score * (10 / n_sources)    
+
+    print(f"***updating reliability score in update_reliability_score: {score}")
+    return Command(update={
+        "messages" : [ToolMessage(content=f"Reliability score updated to: {normalized_score}", tool_call_id=runtime.tool_call_id)],
+        "reliability_score": normalized_score
+    })
+
+@tool
+async def complete_review_tool(runtime: ToolRuntime) -> Command:
+    """
+    Use this to complete the review.
+    Returns:
+        the final score between 0 and 10
+    """
+    completeness_score = runtime.state['completeness_score']
+    reliability_score = runtime.state['reliability_score']
+    correctness_score = runtime.state['correctness_score']
+
+    final_score = (completeness_score + reliability_score + correctness_score) / 3
+
+    print(f"***completing review in complete_review_tool: final score is {final_score}")
+    return Command(update={
+        "messages" : [ToolMessage(content=f"Review completed: final score is {final_score}", tool_call_id=runtime.tool_call_id)],
+    })
