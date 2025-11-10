@@ -22,11 +22,13 @@ You will retrieve the full context of the analysis by calling the following tool
 
 Once you retrieved the full context of the analysis and understood it, go to the next step.
 
-## Step 1: assess if an analysis-ending error occurred
+## Step 1: an analysis-ending error occurred / no complex analysis to review 
 
-It may happen that the analyst encountered errors external to its control during the analysis: maybe a dataset was not available in the database, or a tool call failed multiple times due to external factors.
-In this case, there is no need to assess the score: just call your error_occurred_tool. Its argument is a brief explanation of the error that occurred and why the flow should end.
-Once called, the flow will end.
+Two edge cases are possible:
+- It may happen that the analyst encountered errors external to its control during the analysis: maybe a dataset was not available in the database, or a tool call failed multiple times due to external factors.
+- It may happen that the analysis is not complex enough to warrant a review. Maybe the agent gave a simple answer to a simple question, or the user asked something that did not require a data analysis.
+
+In both cases, you will end the flow by calling your end_flow_tool(reason). Its argument is a brief explanation of the reason why the flow should end.
 
 **Note:** an 'analysis-ending error' is an error external to the analyst control. For example, a dataset was not available, or a tool use failed multiple times due to incorrect arguments.
 This is different from an error that occurred during the analysis, such as a syntax error in the code. Those are handled in the next step, and are not analysis-ending-errors.
@@ -55,8 +57,12 @@ Once you decided the correctness score - from 0 to 10 - call your update_correct
 
 Once you went through all steps (and if no analysis-ending error occurred), you will complete the review by calling your complete_review_tool.
 This tool will average the scores you provided, and return a final score between 0 and 10. 
-Given this final score, you will decide if the analysis should be rejected or approved:
-- if the final score is greater or equal than 6, call your approve_analysis_tool().
+Given this final score, you will decide if the analysis should be rejected or approved, and if a report of the analysis should be written:
+
+## Step 6: final decision
+
+- if the final score is greater or equal than 6 and the analysis was long and complex, or a report was requested explicitly call your approve_analysis_and_request_report_tool(<reason why a report is warranted>).
+- if the final score is greater or equal than 6 and the analysis was not long and complex, call your approve_analysis_tool().
 - if the final score is less than 6, call your reject_analysis_tool(<comments on the analysis>) with the critiques and comments on the analysis as argument.
 
 If you reject the analysis, the flow will route back to the analyst agent which will read your critiques and improve the analysis.
