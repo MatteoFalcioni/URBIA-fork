@@ -27,6 +27,9 @@ export function MessageInput() {
   const setThreads = useChatStore((state) => state.setThreads);
   const setContextUsage = useChatStore((state) => state.setContextUsage);
   const setIsSummarizing = useChatStore((state) => state.setIsSummarizing);
+  const setIsReviewing = useChatStore((state) => state.setIsReviewing);
+  const setAnalysisObjectives = useChatStore((state) => state.setAnalysisObjectives);
+  const setCurrentReport = useChatStore((state) => state.setCurrentReport);
   
   const [input, setInput] = useState('');
   const [interruptData, setInterruptData] = useState<any>(null); // Track graph interrupts (HITL)
@@ -48,16 +51,26 @@ export function MessageInput() {
   // Update context indicator when thread changes
   useEffect(() => {
     if (currentThreadId) {
-      // Fetch current context state for the thread
+      // Fetch current context state, objectives, and report for the thread
       getThreadState(currentThreadId).then((state) => {
         setContextUsage(state.token_count, state.context_window);
+        setAnalysisObjectives(state.analysis_objectives || []);
+        
+        // Load report if available
+        if (state.report_content && state.report_title) {
+          setCurrentReport(state.report_content, state.report_title);
+        } else {
+          setCurrentReport(null, null);
+        }
       }).catch((err) => {
         console.error('Failed to fetch thread state:', err);
         // Fallback to default
         setContextUsage(0, effectiveMaxTokens);
+        setAnalysisObjectives([]);
+        setCurrentReport(null, null);
       });
     }
-  }, [currentThreadId, setContextUsage, effectiveMaxTokens]);
+  }, [currentThreadId, setContextUsage, setAnalysisObjectives, setCurrentReport, effectiveMaxTokens]);
 
   // Auto-resize textarea
   const adjustTextareaHeight = useCallback(() => {
@@ -124,6 +137,23 @@ export function MessageInput() {
     onSummarizing: (status) => {
       // Show/hide summarization animation
       setIsSummarizing(status === 'start');
+    },
+    onReviewing: (status) => {
+      // Show/hide reviewing animation
+      setIsReviewing(status === 'start');
+    },
+    onObjectivesUpdated: (objectives) => {
+      // Update objectives in real-time when analyst sets them
+      setAnalysisObjectives(objectives);
+    },
+    onReportWritten: (title, content) => {
+      // Display report in artifacts panel in real-time
+      setCurrentReport(content, title);
+      // Auto-open artifacts panel if not already open
+      const isArtifactsPanelOpen = useChatStore.getState().isArtifactsPanelOpen;
+      if (!isArtifactsPanelOpen) {
+        useChatStore.getState().toggleArtifactsPanel();
+      }
     },
     onInterrupt: (value) => {
       // Graph interrupted - show HITL modal

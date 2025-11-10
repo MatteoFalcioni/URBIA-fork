@@ -17,6 +17,7 @@ interface ChatStore {
   setThreads: (threads: Thread[]) => void;
   addThread: (thread: Thread) => void;
   updateThread: (threadId: string, updates: Partial<Thread>) => void;
+  removeThread: (threadId: string) => void;
 
   // Current selected thread
   currentThreadId: string | null;
@@ -52,14 +53,23 @@ interface ChatStore {
   // UI state
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
-  isConfigPanelOpen: boolean;
-  toggleConfigPanel: () => void;
   theme: 'light' | 'dark' | 'auto';
   setTheme: (theme: 'light' | 'dark' | 'auto') => void;
 
   // Sidebar width (resizable with limits)
   sidebarWidth: number;
   setSidebarWidth: (px: number) => void;
+
+  // Right sidebar (artifacts panel)
+  isArtifactsPanelOpen: boolean;
+  toggleArtifactsPanel: () => void;
+  artifactsPanelWidth: number;
+  setArtifactsPanelWidth: (px: number) => void;
+  currentReport: string | null;
+  currentReportTitle: string | null;
+  setCurrentReport: (report: string | null, title?: string | null) => void;
+  analysisObjectives: string[];
+  setAnalysisObjectives: (objectives: string[]) => void;
 
   // Default configs for new threads (applied when auto-creating)
   defaultConfig: { model: string | null; temperature: number | null; system_prompt: string | null; context_window: number | null };
@@ -70,6 +80,8 @@ interface ChatStore {
   setContextUsage: (tokensUsed: number, maxTokens: number) => void;
   isSummarizing: boolean;
   setIsSummarizing: (value: boolean) => void;
+  isReviewing: boolean;
+  setIsReviewing: (value: boolean) => void;
 
   // Toast notifications
   toasts: Array<{ id: string; type: ToastType; title: string; message?: string; duration?: number }>;
@@ -108,6 +120,10 @@ export const useChatStore = create<ChatStore>((set) => ({
     set((state) => ({
       threads: state.threads.map((t) => (t.id === threadId ? { ...t, ...updates } : t)),
     })),
+  removeThread: (threadId) =>
+    set((state) => ({
+      threads: state.threads.filter((t) => t.id !== threadId),
+    })),
 
   currentThreadId: null,
   setCurrentThreadId: (id) => set({ currentThreadId: id, messages: [] }),
@@ -144,9 +160,6 @@ export const useChatStore = create<ChatStore>((set) => ({
 
   isSidebarOpen: true,
   toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-  
-  isConfigPanelOpen: false,
-  toggleConfigPanel: () => set((state) => ({ isConfigPanelOpen: !state.isConfigPanelOpen })),
 
   theme: (localStorage.getItem('theme') as any) || 'auto',
   setTheme: (theme) => {
@@ -161,6 +174,20 @@ export const useChatStore = create<ChatStore>((set) => ({
     set({ sidebarWidth: clamped });
   },
 
+  isArtifactsPanelOpen: false,
+  toggleArtifactsPanel: () => set((state) => ({ isArtifactsPanelOpen: !state.isArtifactsPanelOpen })),
+  artifactsPanelWidth: parseInt(localStorage.getItem('artifactsPanelWidth') || '400', 10),
+  setArtifactsPanelWidth: (px) => {
+    const clamped = Math.max(300, Math.min(800, px));
+    localStorage.setItem('artifactsPanelWidth', String(clamped));
+    set({ artifactsPanelWidth: clamped });
+  },
+  currentReport: null,
+  currentReportTitle: null,
+  setCurrentReport: (report, title) => set({ currentReport: report, currentReportTitle: title ?? null }),
+  analysisObjectives: [],
+  setAnalysisObjectives: (objectives) => set({ analysisObjectives: objectives }),
+
   defaultConfig: JSON.parse(localStorage.getItem('defaultConfig') || '{"model":null,"temperature":null,"system_prompt":null,"context_window":null}'),
   setDefaultConfig: (updates) => {
     set((state) => {
@@ -174,6 +201,8 @@ export const useChatStore = create<ChatStore>((set) => ({
   setContextUsage: (tokensUsed, maxTokens) => set({ contextUsage: { tokensUsed, maxTokens } }),
   isSummarizing: false,
   setIsSummarizing: (value) => set({ isSummarizing: value }),
+  isReviewing: false,
+  setIsReviewing: (value) => set({ isReviewing: value }),
 
   toasts: [],
   addToast: (type, title, message, duration) => set((state) => ({

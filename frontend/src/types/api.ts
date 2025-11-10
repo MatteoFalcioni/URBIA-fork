@@ -49,6 +49,9 @@ export type SSEEvent =
   | { type: 'title_updated'; title: string }
   | { type: 'context_update'; tokens_used: number; max_tokens: number }
   | { type: 'summarizing'; status: 'start' | 'done' }
+  | { type: 'reviewing'; status: 'start' | 'done' }
+  | { type: 'objectives_updated'; objectives: string[] }
+  | { type: 'report_written'; title: string; content: string }
   | { type: 'interrupt'; value: any }  // Graph interrupt for human-in-the-loop
   | { type: 'done'; message_id: string | null }
   | { type: 'error'; error: string };

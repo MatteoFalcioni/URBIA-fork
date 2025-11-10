@@ -18,6 +18,9 @@ interface UseSSEOptions {
   onTitleUpdated?: (title: string) => void;
   onContextUpdate?: (tokensUsed: number, maxTokens: number) => void;
   onSummarizing?: (status: 'start' | 'done') => void;
+  onReviewing?: (status: 'start' | 'done') => void;
+  onObjectivesUpdated?: (objectives: string[]) => void;
+  onReportWritten?: (title: string, content: string) => void;
   onInterrupt?: (value: any) => void;  // Called when graph is interrupted (HITL)
   onDone?: (messageId: string | null) => void;
   onError?: (error: string) => void;
@@ -102,6 +105,12 @@ export function useSSE(options: UseSSEOptions) {
                   options.onContextUpdate?.(event.tokens_used, event.max_tokens);
                 } else if (event.type === 'summarizing') {
                   options.onSummarizing?.(event.status);
+                } else if (event.type === 'reviewing') {
+                  options.onReviewing?.(event.status);
+                } else if (event.type === 'objectives_updated') {
+                  options.onObjectivesUpdated?.(event.objectives);
+                } else if (event.type === 'report_written') {
+                  options.onReportWritten?.(event.title, event.content);
                 } else if (event.type === 'interrupt') {
                   options.onInterrupt?.(event.value);
                   setIsStreaming(false);  // Stream ends after interrupt
@@ -205,6 +214,12 @@ export function useSSE(options: UseSSEOptions) {
                   options.onContextUpdate?.(event.tokens_used, event.max_tokens);
                 } else if (event.type === 'summarizing') {
                   options.onSummarizing?.(event.status);
+                } else if (event.type === 'reviewing') {
+                  options.onReviewing?.(event.status);
+                } else if (event.type === 'objectives_updated') {
+                  options.onObjectivesUpdated?.(event.objectives);
+                } else if (event.type === 'report_written') {
+                  options.onReportWritten?.(event.title, event.content);
                 } else if (event.type === 'interrupt') {
                   options.onInterrupt?.(event.value);
                   setIsStreaming(false);
