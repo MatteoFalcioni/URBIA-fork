@@ -1,6 +1,12 @@
-# Database Architecture
+# Database Architecture 💾
 
-This app uses a **dual-store design** with PostgreSQL as the primary database and filesystem blob storage for large files.
+This app uses a **dual-store design** with PostgreSQL for metadata and AWS S3 for artifact storage.
+
+**Current Deployment**: 
+- **PostgreSQL**: Managed by [Railway](https://railway.app)
+- **AWS S3**: `lg-urban-prod` bucket in `eu-central-1`
+
+**Future Scaling**: AWS RDS (PostgreSQL) ready for production scale-up
 
 ## Overview
 
@@ -13,25 +19,26 @@ This app uses a **dual-store design** with PostgreSQL as the primary database an
         │                                   │
         ▼                                   ▼
 ┌─────────────────────────────────────────┐ ┌──────────────┐
-│              PostgreSQL                 │ │  Blobstore   │
-│                                         │ │ (Filesystem) │
-│  Main App Tables:                       │ │              │
-│  - threads, messages, artifacts         │ │ File Bytes   │
+│              PostgreSQL                 │ │   AWS S3     │
+│            (Railway-managed)            │ │              │
+│                                         │ │ File Bytes   │
+│  Main App Tables:                       │ │ (artifacts)  │
+│  - threads, messages, artifacts         │ │              │
 │  - configs, user_api_keys               │ │              │
 │                                         │ │              │
 │  LangGraph Checkpoint Tables:           │ │              │
 │  - checkpoints, checkpoint_writes       │ │              │
 │  - checkpoint_blobs                     │ │              │
 └─────────────────────────────────────────┘ └──────────────┘
-        Single Source of Truth              Content-Addressed
+        Metadata + Relationships              Content-Addressed
 ```
 
 ### Storage Responsibilities
 
 | Store | What | Why |
 |-------|------|-----|
-| **PostgreSQL** | All application data + LangGraph checkpoints | Persistent, queryable, relational, concurrent |
-| **Blobstore** | Artifact file bytes | Efficient, deduplicated, scalable |
+| **PostgreSQL** | Artifact metadata + LangGraph checkpoints | Persistent, queryable, relational, ACID |
+| **AWS S3** | Artifact file bytes (plots, CSVs, etc.) | Scalable, durable, content-addressed |
 
 ---
 
@@ -40,9 +47,21 @@ This app uses a **dual-store design** with PostgreSQL as the primary database an
 ### Entity Relationship Diagram
 
 ```
-┌──────────────────┐
-│     threads      │
-│──────────────────│
+                  ┌──────────────────────┐
+                  │   user_api_keys      │
+                  │──────────────────────│
+                  │ user_id (PK)         │
+                  │ openai_key (enc)     │
+                  │ anthropic_key (enc)  │
+                  │ created_at           │
+                  │ updated_at           │
+                  └──────────────────────┘
+                            │
+                            │ Logical link by user_id
+                            │
+┌──────────────────┐        ▼
+│     threads      │   (not enforced FK,
+│──────────────────│    multi-tenant design)
 │ id (PK)          │◄─────┐
 │ user_id          │      │
 │ title            │      │
@@ -79,14 +98,14 @@ This app uses a **dual-store design** with PostgreSQL as the primary database an
 │──────────────────│
 │ id (PK)          │
 │ thread_id (FK)   │
-│ sha256           │──► Points to blob in filesystem
+│ sha256           │──► Points to S3 object
 │ filename         │
 │ mime             │
 │ size             │
 │ session_id       │
 │ run_id           │
 │ tool_call_id     │
-│ meta (JSONB)     │
+│ meta (JSONB)     │ ← Contains s3_key, s3_url
 │ created_at       │
 └──────────────────┘
 ```
@@ -154,18 +173,35 @@ Metadata for files generated/uploaded during conversations.
 |--------|------|-------------|
 | `id` | UUID | Primary key |
 | `thread_id` | UUID | Foreign key → threads (CASCADE delete) |
-| `sha256` | String(64) | Content hash (for deduplication & blob lookup) |
+| `sha256` | String(64) | Content hash (for deduplication & S3 lookup) |
 | `filename` | String | Original filename |
 | `mime` | String | MIME type (e.g., `image/png`) |
 | `size` | Integer | File size in bytes |
 | `session_id` | String | Sandbox session that created this artifact |
 | `run_id` | String | Graph run identifier |
 | `tool_call_id` | String | Specific tool call that generated this |
-| `meta` | JSONB | Additional metadata |
+| `meta` | JSONB | Additional metadata (includes `s3_key` and `s3_url`) |
 | `created_at` | Timestamp | Upload time |
 
 **Indexes**: `(thread_id, created_at)`, `sha256`  
-**Note**: Bytes stored in blobstore, not in database
+**Note**: File bytes stored in AWS S3, metadata in PostgreSQL
+
+---
+
+#### **user_api_keys**
+Encrypted storage for user-provided API keys (OpenAI, Anthropic).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `user_id` | String(255) | Primary key, matches Clerk user ID |
+| `openai_key` | Text | Encrypted OpenAI API key (Fernet encryption) |
+| `anthropic_key` | Text | Encrypted Anthropic API key (Fernet encryption) |
+| `created_at` | Timestamp | Key creation time |
+| `updated_at` | Timestamp | Last key update time |
+
+**Indexes**: `user_id`  
+**Security**: Keys are encrypted at rest using Fernet symmetric encryption  
+**Note**: No foreign key constraint to threads; `user_id` is a logical link for multi-tenant isolation
 
 ---
 
@@ -213,38 +249,69 @@ Stores large state objects that don't fit in regular columns.
 
 ---
 
-## Blobstore (Filesystem)
+## AWS S3 Artifact Storage
 
-### Structure
+### Architecture
+
+Artifacts are stored using a **dual-layer approach**:
+1. **PostgreSQL**: Metadata (filename, mime, size, sha256, relationships)
+2. **AWS S3**: Actual file bytes (plots, CSVs, datasets)
+
+### S3 Structure
+
 ```
-blobstore/
-├── ab/
-│   ├── cd/
-│   │   └── abcd1234567890...  ← Full SHA-256 hash as filename
-│   └── ef/
-│       └── abef9876543210...
-└── 12/
-    └── 34/
-        └── 1234abcdef5678...
+s3://lg-urban-prod/
+└── output/
+    └── artifacts/
+        ├── ab/
+        │   ├── cd/
+        │   │   └── abcd1234567890...  ← Full SHA-256 hash
+        │   └── ef/
+        │       └── abef9876543210...
+        └── 12/
+            └── 34/
+                └── 1234abcdef5678...
 ```
 
 ### How It Works
 
-1. **Content-Addressed Storage**: Files are stored by their SHA-256 hash
-2. **3-Level Hierarchy**: `<first-2-chars>/<next-2-chars>/<full-hash>`
-   - Prevents too many files in a single directory
-3. **Automatic Deduplication**: Same file uploaded twice = only stored once
-4. **Lookup**: `sha256` field in `artifacts` table → find blob in filesystem
+1. **Upload**: Modal sandbox generates artifacts → uploads to S3 with content-addressed key
+2. **Metadata**: Backend ingests S3 key → creates `Artifact` record in PostgreSQL
+3. **Download**: Frontend requests artifact → backend generates presigned URL → redirects to S3
+4. **Deduplication**: Same file (same SHA-256) uploaded twice = stored once in S3
 
-### Example
-```python
-# Artifact in database:
-sha256 = "abcd1234567890abcdef..."
-filename = "report.pdf"
+### Content-Addressed Keys
 
-# Actual file location:
-# /app/blobstore/ab/cd/abcd1234567890abcdef...
+S3 keys follow a 3-level hierarchy based on SHA-256:
 ```
+output/artifacts/{sha256[:2]}/{sha256[2:4]}/{sha256}
+```
+
+**Example**:
+```python
+# Artifact in PostgreSQL:
+sha256 = "abcd1234567890abcdef..."
+filename = "analysis.png"
+mime = "image/png"
+meta = {
+    "s3_key": "output/artifacts/ab/cd/abcd1234567890abcdef...",
+    "s3_url": "s3://lg-urban-prod/output/artifacts/ab/cd/abcd1234567890..."
+}
+
+# Download flow:
+# 1. GET /api/artifacts/{artifact_id}/download
+# 2. Backend generates presigned URL (valid 24h)
+# 3. 307 redirect to presigned S3 URL
+# 4. Direct download from S3
+```
+
+### Benefits
+
+- ✅ **Scalable**: No size limits, AWS handles infrastructure
+- ✅ **Durable**: 99.999999999% durability (11 nines)
+- ✅ **Fast**: Direct S3 downloads via presigned URLs
+- ✅ **Secure**: Presigned URLs with expiration (default 24h)
+- ✅ **Deduplicated**: Content-addressed storage prevents duplication
 
 ---
 
@@ -364,15 +431,19 @@ backend/db/alembic/versions/
 - Supports structured data (nested objects, arrays)
 - Still queryable with PostgreSQL JSON operators
 
-### Why Separate Blobstore?
+### Why AWS S3 for Artifacts?
 - **Performance**: PostgreSQL not optimized for large binary data
-- **Deduplication**: Same file uploaded 10 times = stored once
-- **Scalability**: Easy to move to S3/object storage later
+- **Deduplication**: Content-addressed storage (same SHA-256 = single S3 object)
+- **Scalability**: Unlimited storage, AWS infrastructure
+- **Durability**: 99.999999999% durability, automatic replication
+- **Cost-effective**: Pay only for storage used
+- **Direct Downloads**: Presigned URLs enable direct client → S3 transfers
 
-### Why SQLite for Checkpoints?
-- **Fast**: No network overhead for frequent state updates
-- **Disposable**: If deleted, agent continues from message history
-- **Lightweight**: No extra infrastructure needed
+### Why Encrypted API Keys?
+- **Security**: User-provided keys never stored in plaintext
+- **Multi-tenant**: Each user brings their own LLM API keys
+- **Privacy**: Keys encrypted with Fernet (symmetric encryption)
+- **Separation**: Application credentials separate from user credentials
 
 ---
 
@@ -380,10 +451,31 @@ backend/db/alembic/versions/
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `DATABASE_URL` | *(required)* | PostgreSQL connection string |
+| `DATABASE_URL` | *(required)* | PostgreSQL connection string (Railway-provided in prod) |
 | `LANGGRAPH_CHECKPOINT_DB_URL` | `postgresql://postgres:postgres@localhost:5432/chat` | PostgreSQL checkpointer connection string |
-| `BLOBSTORE_DIR` | `/app/blobstore` | Artifact storage directory |
-| `MAX_ARTIFACT_SIZE_MB` | `50` | Max file size per artifact |
+| `AWS_ACCESS_KEY_ID` | *(required)* | AWS access key for S3 artifact storage |
+| `AWS_SECRET_ACCESS_KEY` | *(required)* | AWS secret key for S3 artifact storage |
+| `AWS_REGION` | `eu-central-1` | AWS region for S3 bucket |
+| `S3_BUCKET` | `lg-urban-prod` | S3 bucket name for artifacts |
+| `ENCRYPTION_KEY` | *(required)* | Fernet encryption key for user API keys |
+
+### Deployment-Specific Configuration
+
+**Local Development** (Docker):
+```bash
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/chat
+```
+
+**Railway (Current Production)**:
+- `DATABASE_URL` provided automatically by Railway PostgreSQL service
+- Managed backups, automatic SSL/TLS
+- Suitable for current scale
+
+**AWS RDS (Future Production Scale-up)**:
+- Private subnet with bastion access
+- Enhanced monitoring and performance insights
+- Reserved instances for cost optimization
+- See `tests/RDS-CONNECTION-GUIDE.md` for connection details
 
 ---
 
@@ -391,13 +483,23 @@ backend/db/alembic/versions/
 
 ### "Database migration needed"
 ```bash
-docker exec lg_urban_backend alembic upgrade head
+alembic upgrade head
 ```
 
-### "Can't find artifact blob"
+### "Can't download artifact"
 Check that:
-1. Artifact exists in database: `SELECT * FROM artifacts WHERE id = '<uuid>'`
-2. Blob file exists: `ls /app/blobstore/<sha256-prefix>/<sha256>`
+1. Artifact metadata exists in PostgreSQL:
+   ```sql
+   SELECT * FROM artifacts WHERE id = '<uuid>';
+   ```
+2. S3 object exists:
+   ```bash
+   aws s3 ls s3://lg-urban-prod/output/artifacts/ab/cd/abcd...
+   ```
+3. AWS credentials are valid:
+   ```bash
+   aws s3 ls s3://lg-urban-prod/output/artifacts/ --max-items 5
+   ```
 
 ### "Checkpointer connection error"
 Verify:
