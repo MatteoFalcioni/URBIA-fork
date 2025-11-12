@@ -31,7 +31,7 @@ Furhtermore, he has access to geographic tools that he can use to show 2D or 3D 
 
 # Reviewer
 
-The Reviewer's role is to review the analysis performed by the Data Analyst, grade it following some criteria, and then approving the analysis or rejecting it based on the averaged final grade.
+The Reviewer's role is to review the analysis performed by the Data Analyst, grade it following three criteria (correctness, reliability, completness), and then approving the analysis or rejecting it based on the averaged final grade.
 **Therefore, you should route to the Reviewer after an analysis is performed from the Data Analyst.** 
 The Reviewer will get back to you with the result of its review: 
 - if the analysis was rejected, the Reviewer will also provide critiques to the data analyst to improve its analysis. You MUST then route back to the data analyst, specifying in the task that the previous analysis was rejected, and passing him the exact critiques the reviewer produced.

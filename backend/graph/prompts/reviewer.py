@@ -34,6 +34,7 @@ Once you decided your grade - from 0 to 10 - call the update_completeness_score(
 You will verify the reliability of the sources that the analyst referenced by checking if they actually exist in the opendata.
 You will do so by calling the list_catalog(dataset_id) tool for each dataset_id in the sources. 
 You can measure the reliability score by considering a -1 point for each dataset that does not exist in the opendata, and a +1 point for each dataset that does exists in the opendata.
+If the same source is cited twice, count that as one source.
 Then and call your update_reliability_score(score) with that score as argument, which will be normalized between 0 and 10. Then go to the next step.
 
 ## Step 4: verify **correctness** of the analysis

@@ -1264,7 +1264,7 @@ async def resume_thread(
                     # Stream token chunks (same as POST /messages)
                     if event_type == "on_chat_model_stream":
                         # Skip if in summarization, reviewer, or report writer context
-                        if checkpoint_ns.startswith("summarize_conversation:") or checkpoint_ns.startswith("reviewer_agent:") or checkpoint_ns.startswith("report_writer:"):
+                        if checkpoint_ns.startswith("summarize_conversation:") or checkpoint_ns.startswith("reviewer_agent_node:") or checkpoint_ns.startswith("write_report_node:") or checkpoint_ns.startswith("analyst_agent_node:"):
                             continue
                         
                         chunk = event.get("data", {}).get("chunk")

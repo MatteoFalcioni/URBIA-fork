@@ -56,7 +56,7 @@ from backend.graph.tools.sit_tools import (
     compare_ortofoto,
     view_3d_model,
 )
-from backend.graph.tools.supervisor_tools import assign_to_analyst_agent, assign_to_report_writer, assign_to_reviewer
+from backend.graph.tools.supervisor_tools import assign_to_analyst, assign_to_report_writer, assign_to_reviewer
 
 load_dotenv()
 
@@ -124,7 +124,7 @@ def make_graph(
     supervisor_llm = ChatOpenAI(**supervisor_kwargs)
     supervisor_agent = create_agent(
         model=supervisor_llm,
-        tools=[assign_to_analyst_agent, assign_to_report_writer, assign_to_reviewer],
+        tools=[assign_to_analyst, assign_to_report_writer, assign_to_reviewer],
         system_prompt=supervisor_prompt,  
         name="agent_supervisor",
         state_schema=MyState,
@@ -387,7 +387,7 @@ def make_graph(
                     "messages": msg_update,
                     "token_count": input_tokens,  # Accumulates via reducer
                     "analysis_objectives": result["analysis_objectives"],  # updated by analyst
-                    "code_logs" : -1,  # clean code logs: we transferred their info into code_logs_chunks 
+                    "code_logs" : [],  # clean code logs: we transferred their info into code_logs_chunks 
                     "code_logs_chunks" : code_logs_chunks,
                     "sources": result["sources"],  # updated by analyst
                     "analysis_comments" : "", # reset analysis comments (if there were any, we used them)

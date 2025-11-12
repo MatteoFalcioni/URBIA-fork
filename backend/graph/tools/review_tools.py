@@ -1,6 +1,6 @@
 from typing_extensions import Annotated
 from langchain.tools import tool, ToolRuntime
-from langchain_core.messages import ToolMessage
+from langchain_core.messages import HumanMessage, ToolMessage
 from langgraph.types import Command
 
 @tool
@@ -81,7 +81,17 @@ async def update_reliability_score(score: Annotated[int, "The score of the relia
     # get the number of sources: thats the max of the grade (+1 for every right, -1 for every wrong -> ex: 7 sources, grade in [-7,+7])
     n_sources = len(sources_list)   # it's max grade ossible (if 7 sources, max grade is 7)
     # 10 : n_sources = normalized_score : score -> normalized_score = score * (10 / n_sources)
-    normalized_score = score * (10 / n_sources)    
+    # also handle errors in division by 0
+    if n_sources != 0:
+        normalized_score = score * (10 / n_sources)    
+    # we choose to not compute it and leave it out of the average in the final grade if there are no sources: 
+    # it could be that the reviewer was assigned a review for a simple analysis that the data analyst performed without using datasets
+    else: 
+        return Command(
+            update={
+                "messages" : [ToolMessage(content=f"There are no sources listed, so the reliability score cannot be computed.", tool_call_id=runtime.tool_call_id)]
+            }
+        )
 
     print(f"***updating reliability score in update_reliability_score: {score}")
     return Command(update={
@@ -97,12 +107,18 @@ async def complete_review_tool(runtime: ToolRuntime) -> Command:
         the final score between 0 and 10
     """
     completeness_score = runtime.state['completeness_score']
-    reliability_score = runtime.state['reliability_score']
+    reliability_score = runtime.state.get('reliability_score', None)
     correctness_score = runtime.state['correctness_score']
 
-    final_score = (completeness_score + reliability_score + correctness_score) / 3
+    if reliability_score is not None:
+        final_score = (completeness_score + reliability_score + correctness_score) / 3
+        note_msg = []
+    else: 
+        final_score = (completeness_score + correctness_score) / 2
+        note_msg = [HumanMessage(content="The reliability score was not found - this means the data analyst did not present any sources. If the analysis did not use any datasets, this is fine. Otherwise, this is an error.")]
 
     print(f"***completing review in complete_review_tool: final score is {final_score}")
     return Command(update={
-        "messages" : [ToolMessage(content=f"Review completed: final score is {final_score}", tool_call_id=runtime.tool_call_id)],
+        "messages" : [ToolMessage(content=f"Review completed: final score is {final_score}", tool_call_id=runtime.tool_call_id)] + note_msg,
+        "final_score" : final_score
     })

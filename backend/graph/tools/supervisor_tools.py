@@ -14,12 +14,13 @@ def create_handoff_tool(*, agent_name: str, description: str | None = None):    
     def handoff_tool(task: Annotated[str, "The task that the subagent should perform"], runtime : ToolRuntime) -> Command:
 
         tool_msg = ToolMessage(content=f"Successfully transferred to {agent_name}", tool_call_id=runtime.tool_call_id)
-        task_msg = HumanMessage(content=f"The agent supervisor adivces you to perform the following task : \n{task}")
+        task_msg = HumanMessage(content=f"The agent supervisor advices you to perform the following task : \n{task}")
         state = runtime.state
         
         return Command(
             goto=agent_name,  
-            update={**state, "messages": state["messages"] + [tool_msg] + [task_msg]},   
+            update={**state, "messages": state["messages"] + [tool_msg] + [task_msg]},  
+            graph=Command.PARENT 
         )
 
     return handoff_tool
