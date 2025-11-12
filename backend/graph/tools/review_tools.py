@@ -35,7 +35,8 @@ async def reject_analysis_tool(
         update={
             "analysis_status": "rejected",
             "analysis_comments": comments,
-            "messages" : [ToolMessage(content=f"Analysis rejected by reviewer, with the following comment for the analyst:\n {comments}", tool_call_id=runtime.tool_call_id)],
+            "reroute_count" : 1,
+            "messages" : [ToolMessage(content=f"Analysis rejected by reviewer, with the following comments for the analyst:\n {comments}", tool_call_id=runtime.tool_call_id)],
         }
     )
 

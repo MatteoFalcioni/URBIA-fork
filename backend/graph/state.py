@@ -54,13 +54,19 @@ def list_add(
 
 def list_replace_str(
     left: list[str] | None,
-    right: list[str] | None
+    right: list[str] | None | int
 ) -> list[str]:
-    """Replace list of strings entirely instead of concatenating. Used for code logs chunks and analysis objectives"""
+    """
+    Replace list of strings entirely instead of concatenating. Used for code logs chunks and analysis objectives.
+    NOTE: we use the value -1 for right means to clean the list.
+    """
     if left is None:
         left = []
     if right is None:
         right = []
+    
+    if right == -1:
+        return []
 
     return right
 
@@ -132,9 +138,7 @@ class MyState(AgentState):
     # report features 
     sources : Annotated[list[str], list_add] # list of dataset ids
     reports: Annotated[dict[str, str], merge_dicts]  # key is the title, value is the content 
-    report_status : Annotated[Literal["none", "assigned", "pending", "rejected", "accepted"], status_replace]
     last_report_title : Annotated[str, str_replace]  # title of the last report written
-    edit_instructions : Annotated[str, str_replace]  # instructions for the report writer to edit the report
     code_logs: Annotated[list[dict[str, str]], list_add]  # list of dicts (we need chronological order!), each dicts is input and output of a code block (out can be stdout or stderr or both)
     code_logs_chunks: Annotated[list[str], list_replace_str]  # list of strings, each string is a chunk of already ordered code logs - we first stringify code_logs correclty, then separate it in chunks (see get_code_logs_tool in report_tools.py)
     # review features
