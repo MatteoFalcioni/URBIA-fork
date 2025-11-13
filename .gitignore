@@ -81,4 +81,5 @@ start-rds-tunnel-COPY.sh
 
 # legacy code
 *legacy*
+legacy/
 

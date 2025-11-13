@@ -850,6 +850,7 @@ async def post_message_stream(
                 current_step_has_tools = False
                 current_langgraph_step = None
                 current_node = None  # Track current node to skip output from report_writer
+                current_agent_node = None  # Track which agent we're currently executing (supervisor, data_analyst, etc.)
                 # Track all streamed content for database storage (only final response)
                 all_streamed_content = ""
                 
@@ -860,6 +861,10 @@ async def post_message_stream(
                     node = event_meta.get("langgraph_node")
                     checkpoint_ns = event_meta.get("langgraph_checkpoint_ns", "")
                     langgraph_step = event_meta.get("langgraph_step")
+                    
+                    # Track which agent node we're currently in (node becomes "model"/"tools" during execution)
+                    if node and node not in ["model", "tools"]:
+                        current_agent_node = node
                     
                     # Check for graph interrupts (for human-in-the-loop)
                     data = event.get("data", {})
@@ -897,8 +902,8 @@ async def post_message_stream(
                     
                     # Stream token chunks from the LLM (but not from summarizer or its sub-calls)
                     if event_type == "on_chat_model_stream":
-                        # Skip if we're inside summarization, reviewer, or report writer context
-                        if checkpoint_ns.startswith("summarize_conversation:") or checkpoint_ns.startswith("reviewer_agent:") or checkpoint_ns.startswith("report_writer:"):
+                        # Only stream from supervisor node (filter out all other agents)
+                        if current_agent_node != "supervisor":
                             continue
                         
                         chunk = event.get("data", {}).get("chunk")
@@ -914,11 +919,11 @@ async def post_message_stream(
                                     current_step_content += chunk_text
                     
                     # Detect summarization start
-                    elif event_type == "on_chat_model_start" and checkpoint_ns.startswith("summarize_conversation:"):
+                    elif event_type == "on_chat_model_start" and current_agent_node == "summarizer":
                         yield f"data: {json.dumps({'type': 'summarizing', 'status': 'start'})}\n\n"
                     
                     # Detect reviewer start
-                    elif event_type == "on_chat_model_start" and checkpoint_ns.startswith("reviewer_agent:"):
+                    elif event_type == "on_chat_model_start" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'start'})}\n\n"
                     
                     # Detect summarization end
@@ -934,7 +939,7 @@ async def post_message_stream(
                             logging.warning(f"Failed to get state for context update: {e}")
                     
                     
-                    elif event_type == "on_chat_model_end" and checkpoint_ns.startswith("summarize_conversation:"):
+                    elif event_type == "on_chat_model_end" and current_agent_node == "summarizer":
                         yield f"data: {json.dumps({'type': 'summarizing', 'status': 'done'})}\n\n"
                         # Emit context reset immediately after summarization (token_count is now 0)
                         from backend.config import CONTEXT_WINDOW as DEFAULT_CONTEXT_WINDOW
@@ -942,7 +947,7 @@ async def post_message_stream(
                         yield f"data: {json.dumps({'type': 'context_update', 'tokens_used': 0, 'max_tokens': max_tokens})}\n\n"
                     
                     # Detect reviewer end
-                    elif event_type == "on_chat_model_end" and checkpoint_ns.startswith("reviewer_agent:"):
+                    elif event_type == "on_chat_model_end" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
                 
                     # Stream tool execution start
@@ -1070,7 +1075,7 @@ async def post_message_stream(
                         
                         yield f"data: {json.dumps(event_data)}\n\n"
                     
-                    elif event_type == "on_chat_model_end" and checkpoint_ns.startswith("summarize_conversation:"):
+                    elif event_type == "on_chat_model_end" and current_agent_node == "summarizer":
                         yield f"data: {json.dumps({'type': 'summarizing', 'status': 'done'})}\n\n"
                         # Emit context reset immediately after summarization (token_count is now 0)
                         from backend.config import CONTEXT_WINDOW as DEFAULT_CONTEXT_WINDOW
@@ -1080,7 +1085,7 @@ async def post_message_stream(
                     # Capture final assistant message (but not from summarizer or its sub-calls)
                     elif event_type == "on_chat_model_end":
                         # Skip if inside summarization context
-                        if checkpoint_ns.startswith("summarize_conversation:"):
+                        if current_agent_node == "summarizer":
                             continue
                         
                         output = event.get("data", {}).get("output")
@@ -1222,7 +1227,13 @@ async def resume_thread(
                 current_step_has_tools = False
                 current_langgraph_step = None
                 current_node = None  # Track current node to skip output from report_writer
+                current_agent_node = None  # Track which agent we're currently executing
                 all_streamed_content = ""
+                tool_calls = []  # Track tool calls for persistence (same as POST /messages)
+                assistant_content = None  # Track final assistant message content
+                
+                # Generate a unique message_id for this resume operation
+                resume_message_id = str(uuid_module.uuid4())
                 
                 # Resume with Command(resume=resume_value) using SAME graph and config
                 async for event in graph.astream_events(Command(resume=payload.resume_value), config, version="v2"):
@@ -1232,6 +1243,10 @@ async def resume_thread(
                     node = event_meta.get("langgraph_node")
                     checkpoint_ns = event_meta.get("langgraph_checkpoint_ns", "")
                     langgraph_step = event_meta.get("langgraph_step")
+                    
+                    # Track which agent node we're currently in (node becomes "model"/"tools" during execution)
+                    if node and node not in ["model", "tools"]:
+                        current_agent_node = node
                     
                     # Check for another interrupt (same logic as POST /messages)
                     data = event.get("data", {})
@@ -1263,8 +1278,8 @@ async def resume_thread(
                     
                     # Stream token chunks (same as POST /messages)
                     if event_type == "on_chat_model_stream":
-                        # Skip if in summarization, reviewer, or report writer context
-                        if checkpoint_ns.startswith("summarize_conversation:") or checkpoint_ns.startswith("reviewer_agent_node:") or checkpoint_ns.startswith("write_report_node:") or checkpoint_ns.startswith("analyst_agent_node:"):
+                        # Only stream from supervisor node (filter out all other agents)
+                        if current_agent_node != "supervisor":
                             continue
                         
                         chunk = event.get("data", {}).get("chunk")
@@ -1278,12 +1293,22 @@ async def resume_thread(
                                     current_step_content += chunk_text
                     
                     # Detect reviewer start
-                    elif event_type == "on_chat_model_start" and checkpoint_ns.startswith("reviewer_agent:"):
+                    elif event_type == "on_chat_model_start" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'start'})}\n\n"
                     
                     # Detect reviewer end
-                    elif event_type == "on_chat_model_end" and checkpoint_ns.startswith("reviewer_agent:"):
+                    elif event_type == "on_chat_model_end" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
+                    
+                    # Capture final assistant message (same as POST /messages)
+                    elif event_type == "on_chat_model_end":
+                        # Skip if inside summarization context
+                        if current_agent_node == "summarizer":
+                            continue
+                        
+                        output = event.get("data", {}).get("output")
+                        if output and hasattr(output, "content"):
+                            assistant_content = output.content
                     
                     # Tool events (same as POST /messages)
                     elif event_type == "on_tool_start":
@@ -1292,6 +1317,7 @@ async def resume_thread(
                     
                     elif event_type == "on_tool_end":
                         raw_output = event.get("data", {}).get("output")
+                        raw_input = event.get("data", {}).get("input")
                         
                         # Emit objectives_updated event if set_analysis_objectives_tool was called
                         if event_name == "set_analysis_objectives_tool":
@@ -1326,6 +1352,24 @@ async def resume_thread(
                                 tool_content = raw_output.content
                         
                         tool_output_for_sse = {"content": tool_content} if isinstance(tool_content, str) else to_jsonable(tool_content) if tool_content else to_jsonable(raw_output)
+                        tool_output_for_db = tool_output_for_sse  # Same format for DB
+                        
+                        # Extract tool_call_id and collect tool_calls for persistence (same as POST /messages)
+                        tool_call_id = None
+                        if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
+                            messages = raw_output.update.get("messages", [])
+                            if messages and len(messages) > 0:
+                                tool_msg = messages[0]
+                                if hasattr(tool_msg, "tool_call_id"):
+                                    tool_call_id = tool_msg.tool_call_id
+                        
+                        # Collect tool_call for persistence
+                        tool_calls.append({
+                            "name": event_name,
+                            "input": to_jsonable(raw_input),
+                            "output": tool_output_for_db,
+                            "tool_call_id": tool_call_id,
+                        })
                         
                         event_data = {
                             'type': 'tool_end',
@@ -1396,7 +1440,46 @@ async def resume_thread(
                         all_streamed_content += current_step_content
                         yield f"data: {json.dumps({'type': 'token', 'content': current_step_content})}\n\n"
                 
-                yield f"data: {json.dumps({'type': 'done', 'message_id': None})}\n\n"
+                # Persist messages to database (same as POST /messages)
+                a_msg_id = None
+                from backend.db.session import ASYNC_SESSION_MAKER
+                async with ASYNC_SESSION_MAKER() as write_sess:
+                    # Tool messages first
+                    for idx, tool_call in enumerate(tool_calls):
+                        # Extract tool_call_id if available
+                        tool_call_id = tool_call.get("id") or tool_call.get("tool_call_id")
+                        
+                        # Add tool_call_id to tool_input for easier retrieval
+                        tool_input = tool_call.get("input", {})
+                        if isinstance(tool_input, dict) and tool_call_id:
+                            tool_input = {**tool_input, "tool_call_id": tool_call_id}
+                        
+                        tool_msg = Message(
+                            thread_id=t.id,
+                            message_id=f"tool:{resume_message_id}:{idx}",
+                            role="tool",
+                            tool_name=tool_call["name"],
+                            tool_input=tool_input,
+                            tool_output=tool_call.get("output"),
+                            content=None,
+                            meta={"tool_call_id": tool_call_id} if tool_call_id else None,
+                        )
+                        write_sess.add(tool_msg)
+
+                    # Assistant message - use content that was actually streamed to user
+                    assistant_content_to_save = all_streamed_content if all_streamed_content else ""
+                    logging.info(f"DEBUG (resume): all_streamed_content='{all_streamed_content}', assistant_content='{assistant_content}', saving='{assistant_content_to_save}'")
+                    a_msg = Message(
+                        thread_id=t.id,
+                        message_id=f"assistant:{resume_message_id}",
+                        role="assistant",
+                        content={"text": assistant_content_to_save} if isinstance(assistant_content_to_save, str) else assistant_content_to_save,
+                    )
+                    write_sess.add(a_msg)
+                    await write_sess.commit()
+                    a_msg_id = str(a_msg.id)
+
+                yield f"data: {json.dumps({'type': 'done', 'message_id': a_msg_id})}\n\n"
                 
         except Exception as e:
             logging.error(f"Resume failed for thread {thread_id}: {e}", exc_info=True)
