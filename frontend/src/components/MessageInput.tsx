@@ -17,6 +17,7 @@ export function MessageInput() {
   const setCurrentThreadId = useChatStore((state) => state.setCurrentThreadId);
   const addMessage = useChatStore((state) => state.addMessage);
   const updateMessage = useChatStore((state) => state.updateMessage);
+  const setMessages = useChatStore((state) => state.setMessages);
   const addThread = useChatStore((state) => state.addThread);
   const userId = useChatStore((state) => state.userId);
   const defaultConfig = useChatStore((state) => state.defaultConfig);
@@ -190,37 +191,30 @@ export function MessageInput() {
       
       // Smoothly update the assistant message with artifacts from DB
       if (currentThreadId && messageId) {
-        // Longer delay to ensure backend has committed artifacts to DB
+        // Short delay to ensure backend has committed artifacts to DB
         setTimeout(async () => {
           try {
             const messages = await listMessages(currentThreadId);
-            // Find the assistant message we just added
-            const assistantMsg = messages.find(m => m.id === messageId);
-            if (assistantMsg && assistantMsg.artifacts && assistantMsg.artifacts.length > 0) {
-              // Update only this specific message with artifacts
-              updateMessage(messageId, { artifacts: assistantMsg.artifacts });
-              // Clear artifact bubbles ONLY after successfully loading from DB
+            
+            // FIRST: Update store with fresh messages from DB (reversed for chronological order)
+            setMessages(messages.reverse());
+            
+            // THEN: Check if ANY message in the thread has artifacts
+            const allArtifacts = messages
+              .filter(m => m.artifacts && m.artifacts.length > 0)
+              .flatMap(m => m.artifacts || []);
+            
+            if (allArtifacts.length > 0) {
+              // Artifacts are now in store - safe to clear bubbles
+              // The de-duplicator in ArtifactDisplay will show them from messages
               clearArtifactBubbles(currentThreadId);
             } else {
-              console.log('Artifacts not in DB yet, keeping bubbles visible for 2 more seconds');
-              // Retry once more after additional delay
-              setTimeout(async () => {
-                try {
-                  const retryMessages = await listMessages(currentThreadId);
-                  const retryMsg = retryMessages.find(m => m.id === messageId);
-                  if (retryMsg && retryMsg.artifacts && retryMsg.artifacts.length > 0) {
-                    updateMessage(messageId, { artifacts: retryMsg.artifacts });
-                    clearArtifactBubbles(currentThreadId);
-                  }
-                } catch (err) {
-                  console.error('Retry failed to load artifacts:', err);
-                }
-              }, 2000);
+              console.log('No artifacts in DB yet, keeping bubbles visible');
             }
           } catch (err) {
-            console.error('Failed to update message with artifacts:', err);
+            console.error('Failed to fetch messages after done:', err);
           }
-        }, 500); // Increased delay for DB commit
+        }, 200);
       }
     },
     onError: (error) => {

@@ -1033,11 +1033,12 @@ async def post_message_stream(
                             from backend.artifacts.ingest import ingest_artifact_metadata
                             
                             # Save artifacts to DB immediately with separate session (commit before SSE send)
+                            saved_artifact_dicts = []
                             async with ASYNC_SESSION_MAKER() as artifact_sess:
                                 for art in artifacts:
                                     if 's3_key' in art and tool_call_id:
                                         try:
-                                            await ingest_artifact_metadata(
+                                            artifact_dict = await ingest_artifact_metadata(
                                                 session=artifact_sess,
                                                 thread_id=t.id,
                                                 s3_key=art['s3_key'],
@@ -1048,28 +1049,31 @@ async def post_message_stream(
                                                 session_id=str(t.id),  # Modal sandbox session ID
                                                 tool_call_id=tool_call_id
                                             )
+                                            saved_artifact_dicts.append(artifact_dict)
                                         except Exception as e:
                                             logging.warning(f"Failed to ingest artifact {art.get('name')}: {e}")
                                 # Commit immediately so artifacts are available for frontend refetch
                                 await artifact_sess.commit()
                             
-                            # Now prepare artifacts for SSE with presigned URLs
+                            # Now prepare artifacts for SSE with DB UUIDs (not temp SHA IDs)
                             converted_artifacts = []
-                            for art in artifacts:
-                                converted = {
-                                    'id': art.get('sha256', '')[:16],  # Use first 16 chars of SHA as temp ID
-                                    'name': art.get('name', 'unknown'),
-                                    'mime': art.get('mime', 'application/octet-stream'),
-                                    'size': art.get('size', 0),
-                                }
-                                # Generate presigned URL from S3 key
-                                if 's3_key' in art:
-                                    try:
-                                        converted['url'] = generate_presigned_url_from_s3_key(art['s3_key'])
-                                    except Exception as e:
-                                        logging.warning(f"Failed to generate presigned URL for {art.get('name')}: {e}")
-                                        continue  # Skip artifacts that fail URL generation
-                                converted_artifacts.append(converted)
+                            for art_dict in saved_artifact_dicts:
+                                try:
+                                    # art_dict already has UUID from DB
+                                    converted = {
+                                        'id': art_dict['id'],  # Use DB UUID instead of SHA[:16]
+                                        'name': art_dict['name'],
+                                        'mime': art_dict['mime'],
+                                        'size': art_dict['size'],
+                                    }
+                                    # Generate presigned URL - need to get s3_key from original artifacts list
+                                    matching_art = next((a for a in artifacts if a.get('sha256') == art_dict['sha256']), None)
+                                    if matching_art and 's3_key' in matching_art:
+                                        converted['url'] = generate_presigned_url_from_s3_key(matching_art['s3_key'])
+                                    converted_artifacts.append(converted)
+                                except Exception as e:
+                                    logging.warning(f"Failed to prepare artifact for SSE: {e}")
+                                    continue
                             
                             event_data['artifacts'] = converted_artifacts
                         
@@ -1382,21 +1386,14 @@ async def resume_thread(
                             from backend.artifacts.ingest import ingest_artifact_metadata
                             from backend.db.session import ASYNC_SESSION_MAKER
                             
-                            # Extract tool_call_id
-                            tool_call_id = None
-                            if hasattr(raw_output, "update") and isinstance(raw_output.update, dict):
-                                messages = raw_output.update.get("messages", [])
-                                if messages and len(messages) > 0:
-                                    tool_msg = messages[0]
-                                    if hasattr(tool_msg, "tool_call_id"):
-                                        tool_call_id = tool_msg.tool_call_id
-                            
-                            # Save artifacts to DB
+                            # tool_call_id already extracted above (lines 1361-1368)
+                            # Save artifacts to DB and collect descriptors with UUIDs
+                            saved_artifact_dicts = []
                             async with ASYNC_SESSION_MAKER() as artifact_sess:
                                 for art in artifacts:
                                     if 's3_key' in art and tool_call_id:
                                         try:
-                                            await ingest_artifact_metadata(
+                                            artifact_dict = await ingest_artifact_metadata(
                                                 session=artifact_sess,
                                                 thread_id=t.id,
                                                 s3_key=art['s3_key'],
@@ -1407,26 +1404,29 @@ async def resume_thread(
                                                 session_id=str(t.id),
                                                 tool_call_id=tool_call_id
                                             )
+                                            saved_artifact_dicts.append(artifact_dict)
                                         except Exception as e:
                                             logging.warning(f"Failed to ingest artifact {art.get('name')}: {e}")
                                 await artifact_sess.commit()
                             
-                            # Convert for SSE
+                            # Convert for SSE with DB UUIDs (not temp SHA IDs)
                             converted_artifacts = []
-                            for art in artifacts:
-                                converted = {
-                                    'id': art.get('sha256', '')[:16],
-                                    'name': art.get('name', 'unknown'),
-                                    'mime': art.get('mime', 'application/octet-stream'),
-                                    'size': art.get('size', 0),
-                                }
-                                if 's3_key' in art:
-                                    try:
-                                        converted['url'] = generate_presigned_url_from_s3_key(art['s3_key'])
-                                    except Exception as e:
-                                        logging.warning(f"Failed to generate presigned URL: {e}")
-                                        continue
-                                converted_artifacts.append(converted)
+                            for art_dict in saved_artifact_dicts:
+                                try:
+                                    converted = {
+                                        'id': art_dict['id'],  # Use DB UUID instead of SHA[:16]
+                                        'name': art_dict['name'],
+                                        'mime': art_dict['mime'],
+                                        'size': art_dict['size'],
+                                    }
+                                    # Generate presigned URL - need to get s3_key from original artifacts list
+                                    matching_art = next((a for a in artifacts if a.get('sha256') == art_dict['sha256']), None)
+                                    if matching_art and 's3_key' in matching_art:
+                                        converted['url'] = generate_presigned_url_from_s3_key(matching_art['s3_key'])
+                                    converted_artifacts.append(converted)
+                                except Exception as e:
+                                    logging.warning(f"Failed to prepare artifact for SSE: {e}")
+                                    continue
                             event_data['artifacts'] = converted_artifacts
                         
                         yield f"data: {json.dumps(event_data)}\n\n"
@@ -1466,18 +1466,24 @@ async def resume_thread(
                         )
                         write_sess.add(tool_msg)
 
-                    # Assistant message - use content that was actually streamed to user
+                    # Assistant message - only save if there's actual content
                     assistant_content_to_save = all_streamed_content if all_streamed_content else ""
-                    logging.info(f"DEBUG (resume): all_streamed_content='{all_streamed_content}', assistant_content='{assistant_content}', saving='{assistant_content_to_save}'")
-                    a_msg = Message(
-                        thread_id=t.id,
-                        message_id=f"assistant:{resume_message_id}",
-                        role="assistant",
-                        content={"text": assistant_content_to_save} if isinstance(assistant_content_to_save, str) else assistant_content_to_save,
-                    )
-                    write_sess.add(a_msg)
-                    await write_sess.commit()
-                    a_msg_id = str(a_msg.id)
+                    
+                    if assistant_content_to_save:
+                        logging.info(f"DEBUG (resume): Saving assistant message with content: '{assistant_content_to_save}'")
+                        a_msg = Message(
+                            thread_id=t.id,
+                            message_id=f"assistant:{resume_message_id}",
+                            role="assistant",
+                            content={"text": assistant_content_to_save},
+                        )
+                        write_sess.add(a_msg)
+                        await write_sess.commit()
+                        a_msg_id = str(a_msg.id)
+                    else:
+                        logging.info(f"DEBUG (resume): No content to save, skipping assistant message (tool messages only)")
+                        # Still commit tool messages if any were added
+                        await write_sess.commit()
 
                 yield f"data: {json.dumps({'type': 'done', 'message_id': a_msg_id})}\n\n"
                 
