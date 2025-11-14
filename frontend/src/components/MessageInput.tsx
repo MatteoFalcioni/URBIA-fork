@@ -8,6 +8,7 @@ import { Send } from 'lucide-react';
 import { useChatStore } from '@/store/chatStore';
 import { ContextIndicator } from './ContextIndicator';
 import { InterruptModal } from './InterruptModal';
+import { ModelSelector } from './ModelSelector';
 import { useSSE } from '@/hooks/useSSE';
 import { createThread, updateThreadConfig, listMessages, getThreadState } from '@/utils/api';
 import type { Message } from '@/types/api';
@@ -16,7 +17,6 @@ export function MessageInput() {
   const currentThreadId = useChatStore((state) => state.currentThreadId);
   const setCurrentThreadId = useChatStore((state) => state.setCurrentThreadId);
   const addMessage = useChatStore((state) => state.addMessage);
-  const updateMessage = useChatStore((state) => state.updateMessage);
   const setMessages = useChatStore((state) => state.setMessages);
   const addThread = useChatStore((state) => state.addThread);
   const userId = useChatStore((state) => state.userId);
@@ -302,7 +302,7 @@ export function MessageInput() {
             }
             rows={1}
             disabled={isStreaming || !hasApiKeys}
-            className="w-full px-4 py-3 pr-16 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent resize-none disabled:opacity-50 transition-all duration-200 text-sm overflow-hidden"
+            className="w-full px-4 py-3 pr-16 pb-10 rounded-xl focus:outline-none focus:ring-2 focus:border-transparent resize-none disabled:opacity-50 transition-all duration-200 text-sm overflow-hidden"
             style={{ 
               border: '1px solid var(--border)', 
               backgroundColor: 'var(--bg-secondary)', 
@@ -319,6 +319,11 @@ export function MessageInput() {
               maxTokens={effectiveMaxTokens}
               isSummarizing={isSummarizing}
             />
+          </div>
+
+          {/* Model selector in bottom-left corner inside textarea */}
+          <div className="absolute bottom-2 left-3">
+            <ModelSelector />
           </div>
         </div>
 

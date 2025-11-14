@@ -134,10 +134,10 @@ def make_graph(
     from backend.config import DEFAULT_MODEL, DEFAULT_TEMPERATURE, CONTEXT_WINDOW
     # Use config or fall back to env defaults
     model_name = model_name or DEFAULT_MODEL
-    llm_kwargs = {"model": model_name}
-    
     # Only pass temperature if explicitly set (config) or if env default exists
     temp = temperature if temperature is not None else DEFAULT_TEMPERATURE
+    print(f"[MODEL] Using model: {model_name} (temperature: {temp if temp is not None else 'default'})")
+    llm_kwargs = {"model": model_name}
     if temp is not None:
         llm_kwargs["temperature"] = temp
 

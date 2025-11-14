@@ -9,12 +9,15 @@ import { SignedIn, SignedOut, RedirectToSignIn } from '@clerk/clerk-react';
 import { useChatStore } from '@/store/chatStore';
 import { ToastManager } from '@/components/Toast';
 import { useClerkSync } from '@/hooks/useClerkSync';
+import { useApiKeysLoader } from '@/hooks/useApiKeysLoader';
 import { ChatPage } from '@/pages/ChatPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 
 function App() {
   // Sync Clerk authentication with chat store
   useClerkSync();
+  // Load API keys when userId is available
+  useApiKeysLoader();
   const theme = useChatStore((state) => state.theme);
   const toasts = useChatStore((state) => state.toasts);
   const removeToast = useChatStore((state) => state.removeToast);

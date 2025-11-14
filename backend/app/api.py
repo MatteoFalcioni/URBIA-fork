@@ -444,6 +444,7 @@ async def update_thread_config(
     # Update fields if provided
     if payload.model is not None:
         cfg.model = payload.model
+        logging.info(f"Updated thread {thread_id} model to: {payload.model}")
     if payload.temperature is not None:
         cfg.temperature = payload.temperature
     if payload.system_prompt is not None:
@@ -455,6 +456,7 @@ async def update_thread_config(
     
     await session.commit()
     await session.refresh(cfg)
+    logging.info(f"Thread {thread_id} config saved - model: {cfg.model}, temperature: {cfg.temperature}")
     return ConfigOut.model_validate(cfg)
 
 
@@ -823,6 +825,11 @@ async def post_message_stream(
             checkpointer=_checkpointer_cm[0],  # Reuse global checkpointer
             user_api_keys=user_api_keys,
         )
+        
+        # Log model being used for this message
+        from backend.config import DEFAULT_MODEL
+        effective_model = cfg.model if cfg and cfg.model else DEFAULT_MODEL
+        print(f"[MESSAGE START] Thread {thread_id} - Model: {effective_model}")
 
         request_id = request.headers.get("x-request-id") or str(uuid.uuid4())
         assistant_content = None

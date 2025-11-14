@@ -3,7 +3,7 @@
  * Shows current thread title, dropdown for switching, and controls.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChevronDown, Plus, Sun, Moon, MessageCircle, Pencil, Archive, ArchiveRestore, Trash2, CheckSquare, Square, Menu } from 'lucide-react';
 import { SignInButton, UserButton, useUser } from '@clerk/clerk-react';
 import { useChatStore } from '@/store/chatStore';
@@ -60,23 +60,29 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
     loadThreads();
   }, [userId, setThreads]);
 
-  // Auto-select or auto-create thread on mount
+  // Auto-select most recent thread on mount (only if no thread is currently selected)
   useEffect(() => {
     // Only run if threads are loaded and no thread is selected
+    // Don't auto-select if we already have a thread selected (preserves selection when navigating)
     if (threads.length === 0 || currentThreadId) return;
     
     // Select the most recent thread (first in list)
     const mostRecentThread = threads[0];
     if (mostRecentThread) {
+      console.log('ThreadSelector: Auto-selecting most recent thread:', mostRecentThread.id);
       setCurrentThreadId(mostRecentThread.id);
       setContextUsage(0, defaultConfig.context_window ?? 30000);
     }
-  }, [threads, currentThreadId, setCurrentThreadId, setContextUsage, defaultConfig.context_window]);
+  }, [threads.length, currentThreadId, setCurrentThreadId, setContextUsage, defaultConfig.context_window]);
 
-  // Auto-create thread if none exist
+  // Auto-create thread if none exist (only once, after threads are loaded)
+  const hasAttemptedAutoCreate = useRef(false);
   useEffect(() => {
     // Only run once after initial load if no threads exist
-    if (threads.length > 0 || currentThreadId || isCreating) return;
+    if (threads.length > 0 || currentThreadId || isCreating || hasAttemptedAutoCreate.current) return;
+    
+    // Mark that we've attempted auto-create to prevent multiple calls
+    hasAttemptedAutoCreate.current = true;
     
     async function autoCreateThread() {
       setIsCreating(true);
@@ -87,6 +93,8 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
         setContextUsage(0, defaultConfig.context_window ?? 30000);
       } catch (err) {
         console.error('Failed to auto-create thread:', err);
+        // Reset flag on error so we can retry
+        hasAttemptedAutoCreate.current = false;
       } finally {
         setIsCreating(false);
       }

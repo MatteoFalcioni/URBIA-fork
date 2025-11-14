@@ -45,20 +45,10 @@ export function SettingsPage() {
   useEffect(() => {
     async function loadConfig() {
       if (!currentThreadId) {
-        // No thread: fetch backend defaults from /config/defaults
-        try {
-          const cfg = await getDefaultConfig();
-          setConfig(cfg);
-          // Also update store's defaultConfig with backend values
-          setDefaultConfig({
-            model: cfg.model,
-            temperature: cfg.temperature,
-            system_prompt: cfg.system_prompt,
-            context_window: cfg.context_window,
-          });
-        } catch (err) {
-          console.error('Failed to load default config:', err);
-          // Fallback to localStorage defaults if API fails
+        // No thread: use local store defaults if available, otherwise fetch from backend
+        if (defaultConfig.model || defaultConfig.temperature !== null || defaultConfig.system_prompt || defaultConfig.context_window !== null) {
+          // Use local store defaults (user has saved custom defaults)
+          console.log('Using local store defaults:', defaultConfig);
           setConfig({
             model: defaultConfig.model,
             temperature: defaultConfig.temperature,
@@ -66,6 +56,30 @@ export function SettingsPage() {
             context_window: defaultConfig.context_window,
             settings: null,
           });
+        } else {
+          // No local defaults: fetch backend defaults
+          try {
+            const cfg = await getDefaultConfig();
+            console.log('Fetched backend defaults:', cfg);
+            setConfig(cfg);
+            // Also update store's defaultConfig with backend values
+            setDefaultConfig({
+              model: cfg.model,
+              temperature: cfg.temperature,
+              system_prompt: cfg.system_prompt,
+              context_window: cfg.context_window,
+            });
+          } catch (err) {
+            console.error('Failed to load default config:', err);
+            // Fallback to localStorage defaults if API fails
+            setConfig({
+              model: defaultConfig.model,
+              temperature: defaultConfig.temperature,
+              system_prompt: defaultConfig.system_prompt,
+              context_window: defaultConfig.context_window,
+              settings: null,
+            });
+          }
         }
         return;
       }
@@ -73,6 +87,8 @@ export function SettingsPage() {
       // Thread selected: load thread-specific config
       try {
         const cfg = await getThreadConfig(currentThreadId!);
+        console.log('Loaded thread config:', cfg);
+        console.log('Config model value:', cfg.model);
         setConfig(cfg);
       } catch (err) {
         console.error('Failed to load config:', err);
@@ -112,6 +128,8 @@ export function SettingsPage() {
     setIsSaving(true);
     setSaveStatus('idle');
     try {
+      console.log('Saving config:', config);
+      console.log('Current thread ID:', currentThreadId);
       if (!currentThreadId) {
         // No thread selected: update local store only (session-local defaults)
         // Note: These won't persist across browser sessions
@@ -125,7 +143,9 @@ export function SettingsPage() {
         setTimeout(() => setSaveStatus('idle'), 2000);
       } else {
         // Save thread-specific config (POST /threads/:id/config)
-        await updateThreadConfig(currentThreadId, config);
+        console.log('Calling updateThreadConfig with:', { threadId: currentThreadId, config });
+        const result = await updateThreadConfig(currentThreadId, config);
+        console.log('Config saved successfully:', result);
         setSaveStatus('success');
         setTimeout(() => setSaveStatus('idle'), 2000);
       }
@@ -219,7 +239,15 @@ export function SettingsPage() {
               <label className="block text-sm font-medium mb-2">Model</label>
               <select
                 value={config.model || defaultConfig.model || 'gpt-4.1'}
-                onChange={(e) => setConfig((prev) => ({ ...prev, model: e.target.value }))}
+                onChange={(e) => {
+                  console.log('Model changed to:', e.target.value);
+                  setConfig((prev) => ({ ...prev, model: e.target.value }));
+                }}
+                onFocus={() => {
+                  console.log('Select focused - current config.model:', config.model);
+                  console.log('Select focused - defaultConfig.model:', defaultConfig.model);
+                  console.log('Select focused - computed value:', config.model || defaultConfig.model || 'gpt-4.1');
+                }}
                 className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-gray-800 dark:focus:ring-gray-600 focus:border-gray-800 dark:focus:border-gray-600 transition-all outline-none"
                 style={{ 
                   border: '1px solid var(--border)', 
@@ -228,8 +256,8 @@ export function SettingsPage() {
                 }}
               >
                 <option value="gpt-4.1">GPT-4.1</option>
-                <option value="claude-3-5-sonnet-20241022">Claude Sonnet 4.5</option>
-                <option value="claude-3-5-haiku-20241022">Claude Haiku 4.5</option>
+                <option value="claude-sonnet-4-5">Claude Sonnet 4.5</option>
+                <option value="claude-haiku-4-5">Claude Haiku 4.5</option>
               </select>
             </div>
 
