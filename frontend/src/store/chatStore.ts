@@ -125,8 +125,18 @@ export const useChatStore = create<ChatStore>((set) => ({
       threads: state.threads.filter((t) => t.id !== threadId),
     })),
 
-  currentThreadId: null,
-  setCurrentThreadId: (id) => set({ currentThreadId: id, messages: [] }),
+  currentThreadId: (() => {
+    const stored = localStorage.getItem('currentThreadId');
+    return stored || null;
+  })(),
+  setCurrentThreadId: (id) => {
+    if (id) {
+      localStorage.setItem('currentThreadId', id);
+    } else {
+      localStorage.removeItem('currentThreadId');
+    }
+    set({ currentThreadId: id, messages: [] });
+  },
 
   messages: [],
   setMessages: (messages) => set({ messages }),
