@@ -40,6 +40,9 @@ export function MessageInput() {
   const addToolDraft = useChatStore((state) => state.addToolDraft);
   const removeToolDraft = useChatStore((state) => state.removeToolDraft);
   const clearToolDrafts = useChatStore((state) => state.clearToolDrafts);
+  const addSubagentDraft = useChatStore((state) => state.addSubagentDraft);
+  const updateSubagentDraft = useChatStore((state) => state.updateSubagentDraft);
+  const clearSubagentDrafts = useChatStore((state) => state.clearSubagentDrafts);
   const addArtifactBubble = useChatStore((state) => state.addArtifactBubble);
   const clearArtifactBubbles = useChatStore((state) => state.clearArtifactBubbles);
   const contextUsage = useChatStore((state) => state.contextUsage);
@@ -99,12 +102,23 @@ export function MessageInput() {
       }
     },
     onToken: (content) => {
-      // Accumulate token chunks for assistant message
+      // Accumulate token chunks for assistant message (supervisor)
       streamingRef.current = streamingRef.current + content;
       if (currentThreadId) {
         setDraft(currentThreadId, streamingRef.current);
         // Clear all tool drafts when assistant starts responding
         clearToolDrafts(currentThreadId);
+      }
+    },
+    onSubagentToken: (agent, content) => {
+      // Accumulate token chunks for subagent messages
+      if (currentThreadId) {
+        // Get existing content or start fresh
+        const existing = useChatStore.getState().subagentDrafts.find(
+          (s) => s.threadId === currentThreadId && s.agent === agent
+        );
+        const newContent = existing ? existing.content + content : content;
+        addSubagentDraft(currentThreadId, agent, newContent);
       }
     },
     onToolStart: (name, input) => {
@@ -167,18 +181,6 @@ export function MessageInput() {
     },
     onDone: async (messageId) => {
       console.log('onDone called with messageId:', messageId);
-      // Stream complete; add finalized assistant message to state
-      const finalText = streamingRef.current.trim();
-      console.log('Final text length:', finalText.length);
-      if (finalText) {
-        const assistantMsg: Message = {
-          id: messageId || crypto.randomUUID(),
-          thread_id: currentThreadId!,
-          role: 'assistant',
-          content: { text: finalText },
-        };
-        addMessage(assistantMsg);
-      }
       // Reset streaming state
       streamingRef.current = '';
       clearDraft();
@@ -187,19 +189,22 @@ export function MessageInput() {
       // Clear any remaining tool drafts (handles failed tools that didn't send tool_end)
       if (currentThreadId) {
         clearToolDrafts(currentThreadId);
+        clearSubagentDrafts(currentThreadId);
       }
       
-      // Smoothly update the assistant message with artifacts from DB
-      if (currentThreadId && messageId) {
-        // Short delay to ensure backend has committed artifacts to DB
+      // Refetch all messages from DB to get the correct order (supervisor + subagents)
+      // Backend saves all messages (supervisor + subagents) so we need to refetch to see them all
+      if (currentThreadId) {
+        // Short delay to ensure backend has committed all messages to DB
         setTimeout(async () => {
           try {
             const messages = await listMessages(currentThreadId);
             
-            // FIRST: Update store with fresh messages from DB (reversed for chronological order)
+            // Update store with fresh messages from DB (reversed for chronological order)
+            // Backend returns messages in desc order (newest first), reverse for display
             setMessages(messages.reverse());
             
-            // THEN: Check if ANY message in the thread has artifacts
+            // Check if ANY message in the thread has artifacts
             const allArtifacts = messages
               .filter(m => m.artifacts && m.artifacts.length > 0)
               .flatMap(m => m.artifacts || []);
@@ -214,7 +219,7 @@ export function MessageInput() {
           } catch (err) {
             console.error('Failed to fetch messages after done:', err);
           }
-        }, 200);
+        }, 300);  // Slightly longer delay to ensure all messages (including subagents) are committed
       }
     },
     onError: (error) => {

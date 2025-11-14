@@ -13,6 +13,7 @@ const BASE_URL = import.meta.env.VITE_API_URL || '/api';
 interface UseSSEOptions {
   onToken?: (content: string) => void;
   onThinking?: (content: string) => void;
+  onSubagentToken?: (agent: string, content: string) => void;  // Streaming from subagents
   onToolStart?: (name: string, input: any) => void;
   onToolEnd?: (name: string, output: any, artifacts?: Artifact[]) => void;
   onTitleUpdated?: (title: string) => void;
@@ -95,6 +96,8 @@ export function useSSE(options: UseSSEOptions) {
                   options.onToken?.(event.content);
                 } else if (event.type === 'thinking') {
                   options.onThinking?.(event.content);
+                } else if (event.type === 'subagent_token') {
+                  options.onSubagentToken?.(event.agent, event.content);
                 } else if (event.type === 'tool_start') {
                   options.onToolStart?.(event.name, event.input);
                 } else if (event.type === 'tool_end') {
@@ -204,6 +207,8 @@ export function useSSE(options: UseSSEOptions) {
                   options.onToken?.(event.content);
                 } else if (event.type === 'thinking') {
                   options.onThinking?.(event.content);
+                } else if (event.type === 'subagent_token') {
+                  options.onSubagentToken?.(event.agent, event.content);
                 } else if (event.type === 'tool_start') {
                   options.onToolStart?.(event.name, event.input);
                 } else if (event.type === 'tool_end') {

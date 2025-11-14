@@ -18,6 +18,7 @@ export interface Message {
   tool_name?: string | null;
   tool_input?: Record<string, any> | null;
   tool_output?: Record<string, any> | null;
+  meta?: { agent?: string } | null;  // For subagent messages: { agent: 'data_analyst' | 'report_writer' | 'reviewer' }
   artifacts?: Artifact[];
 }
 
@@ -44,6 +45,7 @@ export interface Artifact {
 export type SSEEvent =
   | { type: 'token'; content: string }
   | { type: 'thinking'; content: string }
+  | { type: 'subagent_token'; agent: string; content: string }  // Streaming from subagents (data_analyst, report_writer, reviewer)
   | { type: 'tool_start'; name: string; input: any }
   | { type: 'tool_end'; name: string; output: any; artifacts?: Artifact[] }
   | { type: 'title_updated'; title: string }

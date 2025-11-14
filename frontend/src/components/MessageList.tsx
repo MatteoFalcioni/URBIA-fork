@@ -19,6 +19,7 @@ export function MessageList() {
   const streamingDraft = useChatStore((state) => state.streamingDraft);
   const thinkingBlock = useChatStore((state) => state.thinkingBlock);
   const toolDrafts = useChatStore((state) => state.toolDrafts);
+  const subagentDrafts = useChatStore((state) => state.subagentDrafts);
   const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Fetch messages when thread changes
@@ -59,7 +60,7 @@ export function MessageList() {
   // Auto-scroll when new AI messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingDraft, thinkingBlock, toolDrafts]);
+  }, [messages, streamingDraft, thinkingBlock, toolDrafts, subagentDrafts]);
 
   if (!currentThreadId) {
     return (
@@ -97,6 +98,13 @@ export function MessageList() {
         {thinkingBlock && thinkingBlock.threadId === currentThreadId && (
           <ThinkingBlock content={thinkingBlock.content} />
         )}
+
+        {/* Inline subagent streaming drafts */}
+        {subagentDrafts
+          .filter((s) => s.threadId === currentThreadId)
+          .map((s, idx) => (
+            <SubagentBubble key={`subagent-draft-${idx}-${s.agent}`} agent={s.agent} content={s.content} />
+          ))}
 
         {/* Inline tool execution drafts (no artifacts here) */}
         {toolDrafts
@@ -172,6 +180,51 @@ function ToolCallBubble({ name, input }: ToolCallBubbleProps) {
 }
 
 /**
+ * SubagentBubble: renders a collapsible subagent message with dropdown (translucido style).
+ */
+interface SubagentBubbleProps {
+  agent: string;
+  content: string;
+}
+
+function SubagentBubble({ agent, content }: SubagentBubbleProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Format agent name for display
+  const agentDisplayName = agent
+    .split('_')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+
+  return (
+    <div 
+      className="flex gap-3 items-start cursor-pointer transition-all duration-200 hover:opacity-80"
+      onClick={() => setIsExpanded(!isExpanded)}
+    >
+      <div 
+        className="flex-1 rounded-xl px-4 py-3 shadow-sm backdrop-blur-sm border transition-all"
+        style={{ 
+          backgroundColor: 'color-mix(in srgb, var(--bg-secondary) 60%, transparent)',
+          borderColor: 'color-mix(in srgb, var(--border) 50%, transparent)',
+        }}
+      >
+        <div className="font-mono text-xs font-medium shimmer-text">
+          {agentDisplayName}
+        </div>
+        {isExpanded && content && (
+          <div 
+            className="mt-2 text-sm opacity-90 pt-2 border-t whitespace-pre-wrap"
+            style={{ borderColor: 'color-mix(in srgb, var(--border) 30%, transparent)' }}
+          >
+            {content}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * MessageBubble: renders a single message with role-specific styling.
  * Supports user, assistant, and tool messages.
  */
@@ -222,6 +275,12 @@ function MessageBubble({ message }: MessageBubbleProps) {
 
   // Assistant message rendering
   if (role === 'assistant') {
+    // Check if this is a subagent message (has meta.agent)
+    if (message.meta?.agent) {
+      return <SubagentBubble agent={message.meta.agent} content={content?.text || JSON.stringify(content)} />;
+    }
+    
+    // Regular supervisor message
     return (
       <div className="flex gap-3 items-start">
         <div className="flex-1 w-full rounded-xl p-4 shadow-sm" style={{ backgroundColor: 'var(--assistant-message-bg)', color: 'var(--assistant-message-text)' }}>
