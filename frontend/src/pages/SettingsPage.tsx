@@ -269,18 +269,18 @@ export function SettingsPage() {
               <input
                 type="range"
                 min="0"
-                max="2"
+                max="1"
                 step="0.1"
                 value={config.temperature ?? defaultConfig.temperature ?? 0.5}
                 onChange={(e) => setConfig((prev) => ({ ...prev, temperature: parseFloat(e.target.value) }))}
                 className="w-full h-2 rounded-lg cursor-pointer range-slider"
                 style={{ 
-                  background: `linear-gradient(to right, #1f2937 0%, #1f2937 ${((config.temperature ?? defaultConfig.temperature ?? 0.5) / 2) * 100}%, #e5e7eb ${((config.temperature ?? defaultConfig.temperature ?? 0.5) / 2) * 100}%, #e5e7eb 100%)`
+                  background: `linear-gradient(to right, #1f2937 0%, #1f2937 ${((config.temperature ?? defaultConfig.temperature ?? 0.5) / 1) * 100}%, #e5e7eb ${((config.temperature ?? defaultConfig.temperature ?? 0.5) / 1) * 100}%, #e5e7eb 100%)`
                 }}
               />
               <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mt-1">
                 <span>Precise (0.0)</span>
-                <span>Creative (2.0)</span>
+                <span>Creative (1.0)</span>
               </div>
             </div>
 

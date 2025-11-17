@@ -24,50 +24,51 @@ export function ContextIndicator({ tokensUsed, maxTokens, isSummarizing }: Conte
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
 
-  return (
-    <div className="flex items-center gap-2">
-      {/* Circular progress ring - smaller */}
-      <div className="relative w-5 h-5">
-        <svg className="w-5 h-5 transform -rotate-90">
-          {/* Background circle */}
-          <circle
-            cx="10"
-            cy="10"
-            r={radius}
-            stroke="var(--border)"
-            strokeWidth="2.5"
-            fill="none"
-          />
-          {/* Progress circle */}
-          <circle
-            cx="10"
-            cy="10"
-            r={radius}
-            stroke="var(--user-message-bg)"
-            strokeWidth="2.5"
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-500"
-            strokeLinecap="round"
-          />
-        </svg>
-        {/* Center spinner when summarizing */}
-        {isSummarizing && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 size={6} className="animate-spin" style={{ color: 'var(--user-message-bg)' }} />
-          </div>
-        )}
-      </div>
+  // SVG viewBox needs to account for stroke width to prevent clipping
+  const strokeWidth = 2;
+  const padding = strokeWidth / 2; // Half stroke width for padding
+  const viewBoxSize = (radius + padding) * 2;
+  const center = radius + padding;
 
-      {/* Percentage display on the side */}
-      <div className="text-sm font-medium" style={{ color: 'var(--user-message-bg)' }}>
-        {isSummarizing ? (
-          <span className="opacity-75">Condensing...</span>
-        ) : (
-          <span>{Math.round(percentage)}%</span>
-        )}
-      </div>
+  return (
+    <div className="relative w-5 h-5" style={{ overflow: 'visible' }}>
+      {/* Circular progress ring - smaller */}
+      <svg 
+        className="w-5 h-5 transform -rotate-90" 
+        viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
+        style={{ shapeRendering: 'geometricPrecision', overflow: 'visible' }}
+      >
+        {/* Background circle */}
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          stroke="var(--border)"
+          strokeWidth={strokeWidth}
+          fill="none"
+          style={{ shapeRendering: 'geometricPrecision' }}
+        />
+        {/* Progress circle */}
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          stroke="var(--user-message-bg)"
+          strokeWidth={strokeWidth}
+          fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          className="transition-all duration-500"
+          strokeLinecap="round"
+          style={{ shapeRendering: 'geometricPrecision' }}
+        />
+      </svg>
+      {/* Center spinner when summarizing */}
+      {isSummarizing && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <Loader2 size={6} className="animate-spin" style={{ color: 'var(--user-message-bg)' }} />
+        </div>
+      )}
     </div>
   );
 }

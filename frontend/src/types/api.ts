@@ -13,6 +13,7 @@ export interface Thread {
 export interface Message {
   id: string;
   thread_id: string;
+  message_id?: string | null;  // Client-supplied idempotency key, also used to link segments to user messages
   role: 'user' | 'assistant' | 'tool' | 'system';
   content: Record<string, any> | null;
   tool_name?: string | null;

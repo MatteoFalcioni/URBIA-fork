@@ -55,6 +55,7 @@ interface ChatStore {
   // Subagent segments (finalized bubbles that persist until backend saves)
   subagentSegments: { threadId: string; agent: string; content: string; id: string; timestamp: number }[];
   clearSubagentSegments: (threadId: string) => void;
+  removeSubagentSegments: (threadId: string, agents: string[]) => void;
   
   // Artifact bubbles (separate from tool drafts, persistent)
   artifactBubbles: { threadId: string; toolName: string; artifacts: Artifact[] }[];
@@ -215,6 +216,15 @@ export const useChatStore = create<ChatStore>((set) => ({
   subagentSegments: [],
   clearSubagentSegments: (threadId) =>
     set((state) => ({ subagentSegments: state.subagentSegments.filter((s) => s.threadId !== threadId) })),
+  removeSubagentSegments: (threadId, agents) =>
+    set((state) => {
+      const agentSet = new Set(agents);
+      return {
+        subagentSegments: state.subagentSegments.filter(
+          (s) => !(s.threadId === threadId && agentSet.has(s.agent))
+        ),
+      };
+    }),
   
   artifactBubbles: [],
   addArtifactBubble: (threadId, toolName, artifacts) =>

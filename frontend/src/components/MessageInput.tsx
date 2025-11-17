@@ -43,7 +43,9 @@ export function MessageInput() {
   const addSubagentDraft = useChatStore((state) => state.addSubagentDraft);
   const clearSubagentDrafts = useChatStore((state) => state.clearSubagentDrafts);
   const finalizeSubagentDraft = useChatStore((state) => state.finalizeSubagentDraft);
+  const clearSubagentSegments = useChatStore((state) => state.clearSubagentSegments);
   const addArtifactBubble = useChatStore((state) => state.addArtifactBubble);
+  const removeSubagentSegments = useChatStore((state) => state.removeSubagentSegments);
   
   // Track the currently active agent (last agent that received tokens)
   const activeAgentRef = useRef<string | null>(null);
@@ -218,14 +220,31 @@ export function MessageInput() {
         // Short delay to ensure backend has committed all messages to DB
         setTimeout(async () => {
           try {
-            const messages = await listMessages(currentThreadId);
+            const fetchedMessages = await listMessages(currentThreadId);
+            const chronologicalMessages = [...fetchedMessages].reverse();
             
-            // Update store with fresh messages from DB (reversed for chronological order)
-            // Backend returns messages in desc order (newest first), reverse for display
-            setMessages(messages.reverse());
+            // Update store with fresh messages from DB (chronological order)
+            setMessages(chronologicalMessages);
+            
+            // Remove stale frontend segments for agents that now have saved segments
+            const segmentAgents = Array.from(
+              new Set(
+                chronologicalMessages
+                  .filter(
+                    (m) =>
+                      m.role === 'assistant' &&
+                      m.meta?.agent &&
+                      m.meta?.segment_index !== undefined
+                  )
+                  .map((m) => m.meta!.agent!)
+              )
+            );
+            if (segmentAgents.length > 0) {
+              removeSubagentSegments(currentThreadId, segmentAgents);
+            }
             
             // Check if ANY message in the thread has artifacts
-            const allArtifacts = messages
+            const allArtifacts = chronologicalMessages
               .filter(m => m.artifacts && m.artifacts.length > 0)
               .flatMap(m => m.artifacts || []);
             
@@ -293,11 +312,17 @@ export function MessageInput() {
       }
     }
 
+    // Clear any finalized subagent segments from previous turns so they don't linger
+    if (threadId) {
+      clearSubagentSegments(threadId);
+    }
+    
     // Add user message to UI immediately (optimistic)
     const userMessageId = crypto.randomUUID();
     const userMsg: Message = {
       id: userMessageId,
       thread_id: threadId!,
+      message_id: userMessageId, // Set message_id so segments can be linked to this user message
       role: 'user',
       content: { text: userText },
     };
