@@ -10,7 +10,7 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.db.session import get_session
@@ -475,6 +475,7 @@ class ArtifactOut(BaseModel):
 class MessageOut(BaseModel):
     id: UUID
     thread_id: UUID
+    message_id: Optional[str] = None  # Client-supplied idempotency key, also used to link segments to user messages
     role: str
     content: Optional[dict] = None
     tool_name: Optional[str] = None
@@ -576,9 +577,14 @@ async def list_messages(
         .where(Message.thread_id == thread_id)
         .order_by(
             Message.created_at.desc(),
-            # Prioritize supervisor messages (assistant:) over subagent messages (subagent:)
-            # Using asc() so "assistant:" comes before "subagent:" alphabetically
-            Message.message_id.asc(),
+            # Custom ordering: tool messages first, then subagent segments, then supervisor
+            # This ensures correct chronological order even when timestamps are identical
+            case(
+                (Message.message_id.like("tool:%"), 0),
+                (Message.message_id.like("subagent:%"), 1),
+                (Message.message_id.like("assistant:%"), 2),
+                else_=3
+            ).asc(),
             Message.id.desc()  # Final tie-breaker for deterministic ordering
         )
         .limit(limit)
@@ -599,6 +605,7 @@ async def list_messages(
         msg_dict = {
             "id": msg.id,
             "thread_id": msg.thread_id,
+            "message_id": msg.message_id,  # Include message_id for frontend to link segments to user messages
             "role": msg.role,
             "content": content,
             "tool_name": msg.tool_name,
@@ -807,7 +814,7 @@ async def post_message_stream(
         from backend.graph.graph import make_graph
         from backend.main import _checkpointer_cm
         from backend.db.session import ASYNC_SESSION_MAKER
-        from backend.graph.context import set_db_session, set_thread_id
+        from backend.graph.context import set_db_session, set_thread_id, clear_db_session, clear_thread_id
         import uuid as uuid_module
         
         if not _checkpointer_cm:
@@ -833,6 +840,7 @@ async def post_message_stream(
             context_window=cfg.context_window if cfg else None,  # Use thread config or env default
             checkpointer=_checkpointer_cm[0],  # Reuse global checkpointer
             user_api_keys=user_api_keys,
+            plot_graph=False,
         )
         
         # Log model being used for this message
@@ -975,9 +983,10 @@ async def post_message_stream(
                         elif current_agent_node == "reviewer":
                             yield f"data: {json.dumps({'type': 'reviewing', 'status': 'start'})}\n\n"
                     
-                    # Detect summarization end
-                    elif event_type == "on_chain_end" and node == "agent":
-                        # Emit context update after agent finishes processing
+                    # Detect agent node end - send context update after any agent finishes processing
+                    # Note: supervisor is excluded because it doesn't update token_count
+                    elif event_type == "on_chain_end" and node in ["agent", "data_analyst", "reviewer", "report_writer"]:
+                        # Emit context update after any agent node finishes processing
                         try:
                             from backend.config import CONTEXT_WINDOW as DEFAULT_CONTEXT_WINDOW
                             state_snapshot = await graph.aget_state(config)
@@ -998,6 +1007,19 @@ async def post_message_stream(
                     # Detect reviewer end
                     elif event_type == "on_chat_model_end" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
+                    
+                    # Send context update after any agent's chat model ends (including subagents)
+                    elif event_type == "on_chat_model_end" and current_agent_node:
+                        # Skip summarizer (handled separately) and supervisor (handled by on_chain_end)
+                        if current_agent_node not in ["summarizer", "supervisor"]:
+                            try:
+                                from backend.config import CONTEXT_WINDOW as DEFAULT_CONTEXT_WINDOW
+                                state_snapshot = await graph.aget_state(config)
+                                token_count = state_snapshot.values.get("token_count", 0) if state_snapshot.values else 0
+                                max_tokens = cfg.context_window if cfg and cfg.context_window else DEFAULT_CONTEXT_WINDOW
+                                yield f"data: {json.dumps({'type': 'context_update', 'tokens_used': token_count, 'max_tokens': max_tokens})}\n\n"
+                            except Exception as e:
+                                logging.warning(f"Failed to get state for context update after {current_agent_node}: {e}")
                 
                     # Stream tool execution start
                     elif event_type == "on_tool_start":
@@ -1292,6 +1314,10 @@ async def post_message_stream(
                 },
             )
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+        finally:
+            # Always clear context variables to prevent connection leaks
+            clear_db_session()
+            clear_thread_id()
 
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
@@ -1318,7 +1344,7 @@ async def resume_thread(
     """
     from backend.graph.graph import make_graph
     from backend.main import get_thread_lock, _checkpointer_cm
-    from backend.graph.context import set_db_session, set_thread_id
+    from backend.graph.context import set_db_session, set_thread_id, clear_db_session, clear_thread_id
     from langgraph.types import Command
     import uuid as uuid_module
     
@@ -1471,8 +1497,22 @@ async def resume_thread(
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'start'})}\n\n"
                     
                     # Detect reviewer end
-                    elif event_type == "on_chat_model_end" and current_agent_node == "reviewer":
-                        yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
+                    # Send context update after any agent's chat model ends (including subagents)
+                    elif event_type == "on_chat_model_end" and current_agent_node:
+                        # Skip summarizer (handled separately) and supervisor (handled by on_chain_end)
+                        if current_agent_node not in ["summarizer", "supervisor"]:
+                            try:
+                                from backend.config import CONTEXT_WINDOW as DEFAULT_CONTEXT_WINDOW
+                                state_snapshot = await graph.aget_state(config)
+                                token_count = state_snapshot.values.get("token_count", 0) if state_snapshot.values else 0
+                                max_tokens = cfg.context_window if cfg and cfg.context_window else DEFAULT_CONTEXT_WINDOW
+                                yield f"data: {json.dumps({'type': 'context_update', 'tokens_used': token_count, 'max_tokens': max_tokens})}\n\n"
+                            except Exception as e:
+                                logging.warning(f"Failed to get state for context update after {current_agent_node} (resume): {e}")
+                            
+                            # Detect reviewer end (after context update)
+                            if current_agent_node == "reviewer":
+                                yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
                     
                     # Capture final assistant message (same as POST /messages)
                     elif event_type == "on_chat_model_end":
@@ -1741,6 +1781,10 @@ async def resume_thread(
         except Exception as e:
             logging.error(f"Resume failed for thread {thread_id}: {e}", exc_info=True)
             yield f"data: {json.dumps({'type': 'error', 'error': str(e)})}\n\n"
+        finally:
+            # Always clear context variables to prevent connection leaks
+            clear_db_session()
+            clear_thread_id()
     
     return StreamingResponse(stream_resume(), media_type="text/event-stream")
 
