@@ -17,6 +17,7 @@ import modal
 from backend.opendata_api.helpers import is_dataset_too_heavy, get_dataset_bytes  # change heavy detection this to be more reliable
 from backend.opendata_api.init_client import client
 from backend.modal_runtime.executor import SandboxExecutor
+from backend.modal_runtime.session import session_base_dir
 from backend.graph.context import get_thread_id
 
 # ===== helpers =====
@@ -109,20 +110,48 @@ async def load_dataset_tool(
             tool_call_id=runtime.tool_call_id
         )]})
     session_id = str(thread_id)
+    executor = get_or_create_executor(session_id)
 
     # First, check if the dataset was already loaded in the workspace
-    list_loaded_datasets = _get_modal_function("list_loaded_datasets")
-    loaded = list_loaded_datasets.remote(session_id=session_id)
-    datasets_ids = [item.get("path", "").rsplit(".", 1)[0] for item in loaded]
-    if dataset_id in datasets_ids:
-        return Command(update={"messages": [ToolMessage(
-        content=json.dumps({
-            "dataset_id": dataset_id,
-            "rel_path": f"datasets/{dataset_id}.parquet",
-            "note": f"Dataset '{dataset_id}' already loaded. In code, use: pd.read_parquet('datasets/{dataset_id}.parquet')",
-        }),
-        tool_call_id=runtime.tool_call_id
-    )]})
+    check_code = f"""
+import os
+import json
+from pathlib import Path
+
+dataset_path = Path('datasets/{dataset_id}.parquet')
+exists = dataset_path.exists()
+if exists:
+    size_bytes = dataset_path.stat().st_size
+    result = {{"exists": True, "path": str(dataset_path), "size_bytes": size_bytes}}
+else:
+    result = {{"exists": False, "path": str(dataset_path)}}
+print(json.dumps(result))
+"""
+    check_result = executor.execute(check_code)
+    stdout = check_result.get("stdout", "").strip()
+    
+    try:
+        check_data = json.loads(stdout) if stdout else {}
+        if check_data.get("exists", False):
+            # Construct absolute path for consistency with newly loaded datasets
+            base_dir = session_base_dir(session_id)
+            abs_path = f"{base_dir}/datasets/{dataset_id}.parquet"
+            size_bytes = check_data.get("size_bytes", 0)
+            return Command(update={"messages": [ToolMessage(
+                content=json.dumps({
+                    "dataset_id": dataset_id,
+                    "path": abs_path,
+                    "rel_path": f"datasets/{dataset_id}.parquet",
+                    "size_bytes": size_bytes,
+                    "size_mb": round(size_bytes / (1024 * 1024), 3),
+                    "ext": "parquet",
+                    "note": f"Dataset '{dataset_id}' already loaded. In code, use: pd.read_parquet('datasets/{dataset_id}.parquet')",
+                }),
+                tool_call_id=runtime.tool_call_id
+            )]})
+    except (json.JSONDecodeError, KeyError):
+        # If check fails, continue to load anyway
+        pass
 
     # If not, load from S3 or API
     try:
@@ -175,24 +204,66 @@ async def load_dataset_tool(
                     tool_call_id=runtime.tool_call_id
                 )]})
         
-        session_id = str(thread_id)
-        write_dataset_bytes = _get_modal_function("write_dataset_bytes")
+        # Write dataset directly to sandbox using executor.execute()
+        data_b64 = base64.b64encode(data_bytes).decode("utf-8")
+        # Use JSON to safely pass the base64 string to avoid escaping issues
+        data_b64_json = json.dumps(data_b64)
+        write_code = f"""
+import base64
+import os
+import json
+from pathlib import Path
+
+# Decode and write the dataset
+data_b64 = json.loads({data_b64_json})
+data = base64.b64decode(data_b64)
+datasets_dir = Path('datasets')
+datasets_dir.mkdir(exist_ok=True)
+path = datasets_dir / '{dataset_id}.parquet'
+path.write_bytes(data)
+
+# Get metadata
+size_bytes = len(data)
+# rel_path is relative to workdir (datasets/{dataset_id}.parquet)
+rel_path = str(path)
+# path should be absolute - resolve() gives absolute path
+abs_path = str(path.resolve())
+
+result = {{
+    "dataset_id": "{dataset_id}",
+    "path": abs_path,
+    "rel_path": rel_path,
+    "size_bytes": size_bytes,
+    "size_mb": round(size_bytes / (1024 * 1024), 3),
+    "ext": "parquet"
+}}
+
+print(json.dumps(result))
+"""
+        write_result = executor.execute(write_code)
+        
+        stdout = write_result.get("stdout", "").strip()
+        stderr = write_result.get("stderr", "")
+        
+        if stderr:
+            return Command(update={"messages": [ToolMessage(
+                content=f"Error: Failed to write dataset to sandbox: {stderr}",
+                tool_call_id=runtime.tool_call_id
+            )]})
         
         try:
-            result = write_dataset_bytes.remote(
-                dataset_id=dataset_id,
-                data_b64=base64.b64encode(data_bytes).decode("utf-8"),
-                session_id=session_id,
-                ext='parquet',
-                subdir="datasets",
-            )
-        except Exception as modal_err:
+            result = json.loads(stdout) if stdout else {}
+            if "error" in result:
+                return Command(update={"messages": [ToolMessage(
+                    content=f"Error: {result['error']}",
+                    tool_call_id=runtime.tool_call_id
+                )]})
+        except json.JSONDecodeError:
             return Command(update={"messages": [ToolMessage(
-                content=f"Error: Failed to write dataset to Modal workspace. Error: {str(modal_err)}",
+                content=f"Error: Failed to parse write result. Output: {stdout}",
                 tool_call_id=runtime.tool_call_id
             )]})
 
-        # Return the full result from Modal (includes actual path, shape, columns, etc.)
         # Add a clear note about the path to use in code
         result["note"] = f"Dataset loaded. In code, use: pd.read_parquet('{result['rel_path']}')"
         return Command(update={"messages": [ToolMessage(
@@ -228,26 +299,55 @@ def list_loaded_datasets_tool(runtime: ToolRuntime) -> Command:
             tool_call_id=runtime.tool_call_id
         )]})
     
-    result = []
     try:
         session_id = str(thread_id)
-        list_loaded_datasets = _get_modal_function("list_loaded_datasets")
-        loaded = list_loaded_datasets.remote(session_id=session_id)
-        for item in loaded:
-            path = item.get("path", "")
-            dataset_id = path.rsplit(".", 1)[0]
-            result.append(dataset_id)
+        executor = get_or_create_executor(session_id)
+        
+        # List datasets directly in the sandbox
+        list_code = """
+import os
+import json
+from pathlib import Path
+
+datasets_dir = Path('datasets')
+if datasets_dir.exists():
+    files = [f.stem for f in datasets_dir.glob('*.parquet')]
+else:
+    files = []
+
+print(json.dumps(files))
+"""
+        result = executor.execute(list_code)
+        
+        # Parse JSON from stdout
+        stdout = result.get("stdout", "").strip()
+        stderr = result.get("stderr", "")
+        
+        if stderr:
+            return Command(update={"messages": [ToolMessage(
+                content=f"Error: Failed to list loaded datasets: {stderr}",
+                tool_call_id=runtime.tool_call_id
+            )]})
+        
+        try:
+            dataset_ids = json.loads(stdout) if stdout else []
+        except json.JSONDecodeError:
+            return Command(update={"messages": [ToolMessage(
+                content=f"Error: Failed to parse dataset list. Output: {stdout}",
+                tool_call_id=runtime.tool_call_id
+            )]})
+        
+        # Return the result as a list of dataset_ids
+        return Command(update={"messages": [ToolMessage(
+            content=json.dumps(dataset_ids, ensure_ascii=False),
+            tool_call_id=runtime.tool_call_id
+        )]})
+        
     except Exception as e:
         return Command(update={"messages": [ToolMessage(
             content=f"Error: Failed to list loaded datasets: {str(e)}",
             tool_call_id=runtime.tool_call_id
         )]})
-    
-    # Return the result as a list of dataset_ids
-    return Command(update={"messages": [ToolMessage(
-        content=json.dumps(result, ensure_ascii=False),
-        tool_call_id=runtime.tool_call_id
-    )]})
     
 # -----------------
 # export dataset tool
@@ -348,8 +448,13 @@ print(json.dumps(result))
     # Format matches what the code execution tool returns
     artifacts = [export_result]  # List of artifact dicts with s3_key, name, mime, size, sha256
     
+    # Return JSON with success message and export details
     return Command(update={"messages": [ToolMessage(
-        content=f"Dataset exported successfully: {export_result.get('name', 'unknown')}",
+        content=json.dumps({
+            "success": True,
+            "message": f"Dataset exported successfully: {export_result.get('name', 'unknown')}",
+            **export_result  # Include all export details (name, path, sha256, mime, size, s3_key, s3_url)
+        }, ensure_ascii=False),
         tool_call_id=runtime.tool_call_id,
         artifact=artifacts  # for frontend to display download link, artifacts go here, not in content
     )]})

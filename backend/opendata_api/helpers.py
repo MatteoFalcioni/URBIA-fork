@@ -1,7 +1,6 @@
 from .client import BolognaOpenData
 from typing import Any, Dict, List, Optional
 import re, html
-import httpx
 
 # --------------
 # list datasets
@@ -27,10 +26,7 @@ async def list_catalog(
     # taking out title because model gets confused between title
     for item in catalog.get("results", []):
         dsid = item.get("dataset_id", "")
-        #metas = item.get("metas", {})
-        #default_meta = metas.get("default", {}) if isinstance(metas.get("default", {}), dict) else {}
-        #title = default_meta.get("title", "") or ""
-        out.append({"dataset_id": dsid, }) #"title": title
+        out.append({"dataset_id": dsid})
     return out
 
 
@@ -148,7 +144,6 @@ async def get_dataset_description(
     )
     return _html_to_text(raw)
 
-
 # ----------------
 # get dataset fields
 # ----------------
@@ -178,7 +173,6 @@ async def get_dataset_fields(
         if name:
             out.append({"name": name, "description": desc, "type": ftype, "label": label})
     return out
-
 
 # ----------------
 # check if dataset is geo
@@ -343,7 +337,6 @@ async def get_dataset_time_info(
         "records_count": dflt.get("records_count"),
     }
 
-
 # ----------------
 # estimate dataset size
 # ----------------
@@ -384,7 +377,6 @@ async def is_dataset_too_heavy(
         # If we can't estimate, assume it's not too heavy and let it load
         print(f"Warning: Could not estimate size for {dataset_id}: {e}")
         return False
-
 
 # ----------------
 # export dataset as parquet

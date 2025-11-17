@@ -1,4 +1,46 @@
-# backend/modal_runtime/tools.py
+# backend/modal_runtime/functions.py
+"""
+DEPRECATED: This module contains Modal functions that are no longer used in production.
+
+## Why These Functions Are Deprecated
+
+These functions (`list_loaded_datasets`, `write_dataset_bytes`, `export_dataset`) were originally
+designed to interact with Modal volumes from outside the sandbox. However, they suffer from a
+critical issue: **Modal volume sync delays**.
+
+### The Problem
+
+When a file is written to a Modal volume by one function (e.g., `write_dataset_bytes.remote()`),
+it takes time for that file to sync and become visible to other functions or the running sandbox.
+This causes:
+- Flaky behavior: files sometimes appear, sometimes don't
+- Race conditions: second file writes may not be visible
+- Unreliable tests and production failures
+
+### The Solution
+
+We now use `executor.execute()` to run Python code directly inside the sandbox. This approach:
+- Eliminates volume sync issues (files are written and read in the same container)
+- Provides immediate file availability
+- Is more reliable and consistent
+
+### Migration
+
+All tools in `backend/graph/tools/sandbox_tools.py` now use `executor.execute()` instead:
+- `load_dataset_tool`: writes datasets directly in sandbox using `executor.execute()`
+- `list_loaded_datasets_tool`: lists datasets directly from sandbox using `executor.execute()`
+- `export_dataset_tool`: already used `executor.execute()` (was the pattern to follow)
+
+### Legacy Support
+
+These functions are kept for:
+- Backward compatibility (if any external code still uses them)
+- Reference/documentation purposes
+- Potential future use cases where volume sync is acceptable
+
+They should NOT be used in new code. Use `executor.execute()` instead.
+"""
+
 import hashlib
 import mimetypes
 from pathlib import Path
@@ -26,6 +68,9 @@ def _session_base(session_id: str) -> Path:
     """Resolve per-session base dir; session_id must be provided by caller."""
     return Path("/workspace") / "sessions" / session_id
 
+# --------------------- (!) DEPRECATED (!) ---------------------
+# This function is deprecated. Use executor.execute() in sandbox_tools.py instead.
+# See module docstring for full explanation.
 @app.function(
     image=image,
     volumes={"/workspace": WORKSPACE_VOLUME},
@@ -37,6 +82,9 @@ def list_loaded_datasets(
 ) -> List[Dict[str, Any]]:
     """
     List datasets in the workspace. Return structured metadata.
+    
+    DEPRECATED: Use executor.execute() to list datasets directly in the sandbox instead.
+    This function suffers from Modal volume sync delays.
     """
     base = _session_base(session_id) / subdir
 
@@ -54,6 +102,9 @@ def list_loaded_datasets(
         })
     return out
 
+# --------------------- (!) DEPRECATED (!) ---------------------
+# This function is deprecated. Use executor.execute() in sandbox_tools.py instead.
+# See module docstring for full explanation.
 # Accept dataset bytes from backend and persist into the sandbox, returning summary
 @app.function(
     image=image,
@@ -67,6 +118,13 @@ def write_dataset_bytes(
     ext: str = "parquet",
     subdir: str = "datasets",
 ) -> Dict[str, Any]:
+    """
+    Write dataset bytes to the workspace volume.
+    
+    DEPRECATED: Use executor.execute() to write datasets directly in the sandbox instead.
+    This function suffers from Modal volume sync delays, causing files to not be immediately
+    visible to the running sandbox.
+    """
     import base64
 
     data = base64.b64decode(data_b64)
@@ -93,10 +151,9 @@ def write_dataset_bytes(
 
     return summary   
 
-# --------------------- (!) Deprecated (!) ---------------------
-# NOTE: this function is actually useless when we need to export from a running sandbox: 
-# Modal volumes do not sync to outside functions unless we terminate the sandbox (which defeats the purpose of the sandbox)
-# we leave it for legacy reasons, but it is not used in the new codebase.
+# --------------------- (!) DEPRECATED (!) ---------------------
+# This function is deprecated. Use executor.execute() in sandbox_tools.py instead.
+# See module docstring for full explanation.
 @app.function(
     image=image,
     volumes={"/workspace": WORKSPACE_VOLUME},
@@ -110,6 +167,11 @@ def export_dataset(
 ) -> Dict[str, Any]:
     """
     Upload a file from the Modal workspace to S3 and return metadata.
+    
+    DEPRECATED: Use executor.execute() to export datasets directly from the sandbox instead.
+    This function is useless when exporting from a running sandbox because Modal volumes
+    do not sync to outside functions unless we terminate the sandbox (which defeats the purpose).
+    The export_dataset_tool already uses executor.execute() and works correctly.
     """
     import boto3
     import time

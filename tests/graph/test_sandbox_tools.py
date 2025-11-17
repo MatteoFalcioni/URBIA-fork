@@ -3,7 +3,7 @@ Real integration tests for sandbox tools without requiring Postgres.
 
 These tests actually:
 - Execute Python code in Modal sandboxes
-- Call deployed Modal functions
+- (!!!) DEPRECATED (!!!) Call deployed Modal functions (use executor.execute() instead)
 - Upload/download from S3
 - Test the full stack
 
@@ -210,10 +210,11 @@ class TestLoadDatasetTool:
         # Should have dataset metadata
         assert result["dataset_id"] == dataset_id
         assert "path" in result
-        assert "shape" in result
-        assert result["shape"] == [4, 3]  # 4 rows, 3 columns
-        assert "columns" in result
-        assert set(result["columns"]) == {"city", "population", "region"}
+        assert "rel_path" in result
+        assert result["rel_path"].endswith(f"{dataset_id}.parquet")
+        assert "size_bytes" in result
+        assert "ext" in result
+        assert result["ext"] == "parquet"
 
 
 class TestExportDatasetTool:
@@ -263,8 +264,6 @@ class TestExportDatasetTool:
         
         # 2. Export to S3
         print(f"  Step 2: Exporting to S3 with path: {dataset_path}...")
-        import time
-        time.sleep(5)  # Brief pause for Modal volume to sync
         export_cmd = export_dataset_tool.func(dataset_path, mock_runtime)
         export_result = json.loads(export_cmd.update["messages"][0].content)
         
@@ -361,8 +360,6 @@ class TestIntegrationFlow:
     async def test_full_workflow_load_and_analyze(self, test_session_id, mock_runtime, test_dataset_bytes):
         """Test a full workflow: load dataset (mock API), analyze with code, export to S3."""
         print(f"\n🔄 Testing full workflow in session {test_session_id[:8]}...")
-        import time
-        time.sleep(5)  # Brief pause for Modal volume to sync
         
         from unittest.mock import patch, AsyncMock
         
@@ -381,22 +378,22 @@ class TestIntegrationFlow:
         
         print(f"✅ Loaded: {load_result}")
         assert load_result["dataset_id"] == dataset_id
-        assert load_result["shape"] == [4, 3]
-        time.sleep(5)  # Brief pause for Modal volume to sync
+        assert "rel_path" in load_result
+        assert "path" in load_result
         
         dataset_path = load_result["rel_path"]  # Relative path for export
         dataset_abs_path = load_result["path"]  # Full path for code execution
         
         # 2. List datasets
         print(f"📋 Step 2: Listing datasets...")
-        time.sleep(5)  # Brief pause for Modal volume to sync
         list_cmd = list_loaded_datasets_tool.func(mock_runtime)
         list_result = json.loads(list_cmd.update["messages"][0].content)
         
-        print(f"✅ Found {len(list_result)} datasets: {[d['path'] for d in list_result]}")
-        # Should have our dataset
+        print(f"✅ Found {len(list_result)} datasets: {list_result}")
+        # list_result is now a list of dataset_ids (strings), not dicts
+        assert isinstance(list_result, list)
         assert len(list_result) > 0
-        assert any(dataset_id in d["path"] for d in list_result)
+        assert dataset_id in list_result
         
         # 3. Analyze with code in sandbox
         print(f"🐍 Step 3: Analyzing dataset with Python...")
@@ -429,8 +426,6 @@ print(f'Cities: {{", ".join(df["city"].tolist())}}')
         assert "Total population: 6,059,000" in exec_result["stdout"]
         assert "Largest city: Roma" in exec_result["stdout"]
         assert "Milano" in exec_result["stdout"]
-
-        time.sleep(5)  # Brief pause for Modal volume to sync
         
         # 4. Export dataset to S3 and verify
         print(f"📤 Step 4: Exporting dataset to S3...")

@@ -30,6 +30,7 @@ def is_port_open(host: str, port: int, timeout: float = 1.0) -> bool:
         return False
 
 
+test_tunnel = False  # Skip tunnel management if test_tunnel is False
 @pytest.fixture(scope="session", autouse=True)
 def ensure_rds_tunnel():
     """
@@ -40,8 +41,7 @@ def ensure_rds_tunnel():
     
     The tunnel is left running after tests complete for convenience.
     """
-    test_tunnel = False
-    # Skip tunnel management if test_tunnel is False
+    
     if test_tunnel == False:
         yield
         return
