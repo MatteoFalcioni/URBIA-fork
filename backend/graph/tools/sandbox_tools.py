@@ -198,8 +198,7 @@ print(json.dumps(result))
         
         # Write dataset directly to sandbox using executor.execute()
         data_b64 = base64.b64encode(data_bytes).decode("utf-8")
-        # Use JSON to safely pass the base64 string to avoid escaping issues
-        data_b64_json = json.dumps(data_b64)
+        # Use repr() to safely pass the base64 string in the f-string
         write_code = f"""
 import base64
 import os
@@ -207,7 +206,7 @@ import json
 from pathlib import Path
 
 # Decode and write the dataset
-data_b64 = json.loads({data_b64_json})
+data_b64 = {repr(data_b64)}
 data = base64.b64decode(data_b64)
 datasets_dir = Path('datasets')
 datasets_dir.mkdir(exist_ok=True)
