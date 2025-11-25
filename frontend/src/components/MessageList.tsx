@@ -273,7 +273,7 @@ interface ToolCallBubbleProps {
 
 function ToolCallBubble({ name, input }: ToolCallBubbleProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  
+
   // Special handling for load_dataset tool
   const isLoadDataset = name === 'load_dataset';
   const datasetId = isLoadDataset && input?.dataset_id ? input.dataset_id : null;
