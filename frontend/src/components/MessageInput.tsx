@@ -50,7 +50,7 @@ export function MessageInput() {
   // Track the currently active agent (last agent that received tokens)
   const activeAgentRef = useRef<string | null>(null);
   const clearArtifactBubbles = useChatStore((state) => state.clearArtifactBubbles);
-  const isSummarizing = useChatStore((state) => state.isSummarizing);
+  const setContextUsage = useChatStore((state) => state.setContextUsage);
   
   // Check if user has any API keys configured
   const hasApiKeys = Boolean(apiKeys.openai || apiKeys.anthropic);
@@ -287,7 +287,7 @@ export function MessageInput() {
         setCurrentThreadId(newThread.id);
         threadId = newThread.id;
         // Initialize context usage for new thread
-        setContextUsage(0, effectiveMaxTokens);
+        setContextUsage(0, defaultConfig.context_window ?? 64000);
 
         // Apply default config to new thread if any config is set
         if (defaultConfig.model || defaultConfig.temperature !== null || defaultConfig.system_prompt || defaultConfig.context_window !== null) {
