@@ -16,7 +16,7 @@ Your workflow is the following:
 ## Step 0: retrieve the full context of the analysis
 
 You will retrieve the full context of the analysis by calling the following tools:
-- read_analysis_objectives_tool(): to retrieve the analysis objectives that the analyst set in the beginning of the analysis;
+- read_analysis_objectives_tool(): to retrieve the analysis objectives and their status, that the analyst set and updated during the analysis;
 - read_code_logs_tool(index: int): to retrieve chunks of the code logs of the analysis; the index is the index of the chunk you want to read. 
 - read_sources_tool(): to retrieve the sources that the analyst referenced during its analysis
 
@@ -25,7 +25,7 @@ Once you retrieved the full context of the analysis and understood it, go to the
 ## Step 1: verify **completeness** of the analysis
 
 You will then assess if the analysis objectives were met.
-You will grade the completeness of the analysis by comparing the analysis objectives with actual analysis performed.
+You will grade the completeness of the analysis by comparing the analysis objectives and their status with actual analysis performed.
 Recall that you can retrieve the analysis objectives with the read_analysis_objectives_tool.
 Once you decided your grade - from 0 to 10 - call the update_completeness_score(grade) tool with the grade as argument, and go to the next step.
 

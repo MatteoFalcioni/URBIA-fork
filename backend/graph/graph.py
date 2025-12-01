@@ -6,7 +6,7 @@ from langchain_anthropic import ChatAnthropic
 from langgraph.graph import StateGraph, START
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langchain_text_splitters import TokenTextSplitter
-from langchain.agents.middleware import SummarizationMiddleware   
+from langchain.agents.middleware import SummarizationMiddleware, TodoListMiddleware   
 from langchain_core.messages import HumanMessage
 from pydantic import SecretStr
 from dotenv import load_dotenv
@@ -27,7 +27,6 @@ from backend.graph.tools.report_tools import (
     read_sources_tool, 
     write_report_tool, 
     write_source_tool, 
-    set_analysis_objectives_tool, 
     read_analysis_objectives_tool
 )
 from backend.graph.tools.review_tools import (
@@ -193,8 +192,7 @@ def make_graph(
         get_dataset_time_info_tool,
     ]
     report_tools = [
-        write_source_tool,
-        set_analysis_objectives_tool,
+        write_source_tool
     ]
     tools = [
         *api_tools,
@@ -222,6 +220,7 @@ def make_graph(
                 messages_to_keep=10,  # Keep last 10 messages after summary
                 summary_prompt=summarizer_prompt,  
             ),
+            TodoListMiddleware(),
         ]
     )
 
