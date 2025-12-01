@@ -229,23 +229,23 @@ def make_graph(
     )
 
     # ======= REPORT WRITER AGENT =======
-    # use claude 4.5 Haiku for report writer
-    report_writer_kwargs = {"model": "claude-haiku-4-5"}
-    if anthropic_api_key:
-        report_writer_kwargs['api_key'] = anthropic_api_key
+    # use gpt 4.1 for report writer instead of haiku
+    report_writer_kwargs = {"model": "gpt-4.1"}
+    if openai_api_key:
+        report_writer_kwargs['api_key'] = openai_api_key
 
-    report_writer_llm = ChatAnthropic(**report_writer_kwargs)
+    report_writer_llm = ChatOpenAI(**report_writer_kwargs)
     
     agent_report_writer = create_agent(
         model=report_writer_llm,
-        tools=[write_report_tool, read_sources_tool, read_analysis_objectives_tool],
+        tools=[write_report_tool, read_sources_tool],
         system_prompt=report_prompt,
         name="agent_report_writer",
         state_schema=MyState,
         middleware=[
             SummarizationMiddleware(
                 model=summarizer,
-                max_tokens_before_summary=effective_context_window,  # Trigger summarization at 20000 tokens
+                max_tokens_before_summary=effective_context_window,  
                 messages_to_keep=10,  # Keep last 10 messages after summary
                 summary_prompt="Summarize the conversation keeping the relevant details about the analysis performed.",  
             ),

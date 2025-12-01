@@ -14,7 +14,6 @@ def write_report_tool(
     Write a report of the analysis performed.
     Interrupts the model to ask for approval before writing the report.
     """
-    state = runtime.state   
     print("***writing report in write_report_tool")
 
     # refine this message in frontend and simplify it here in backend (the user will not see this below)
