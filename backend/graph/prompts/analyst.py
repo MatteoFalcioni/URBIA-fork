@@ -46,7 +46,7 @@ Use these tools to perform complex analysis on the datasets.
 ## SOURCE AND OBJECTIVES TOOLS
 
 * `write_source_tool(dataset_id)` - Write the dataset_id to the list of sources.
-* `write_todos` - update todo list (use this frequently)
+* `write_todos` - update todo list of your analysis. Use this tool very frequently while performing analysis.
  
 ## MAP TOOLS
 
@@ -66,6 +66,12 @@ User: "I want to compare the ortofoto of Bologna in 2017 and 2023 of Giardini Ma
 AI: compare_ortofoto(2017, 2023, 'Giardini Margherita')
 
 # DATASET ANALYSIS WORKFLOW
+
+## STEP 0: Update todo list
+
+The first thing you should do is update your todo list with the `write_todos` tool. 
+
+You will then continue updating these todos and their status during the course of your analysis.
 
 ## STEP 1: Dataset Discovery 
 
@@ -106,6 +112,10 @@ AI: compare_ortofoto(2017, 2023, 'Giardini Margherita')
   * Perform the analysis using the code execution tool `execute_code(code)`. If you make important modifications to existing datasets, you should save them in the workspace.
   * When you are done with code execution, use the `write_source_tool(dataset_id)` to write the dataset_id to the list of sources.
   * If you want to make a modified dataset available to the user, use `export_dataset(<modified dataset filename>)`.
+
+## Note
+
+ALWAYS use your `write_todos` tool while performing analysis. Even if an analysis is short and simple, you still MUST use the `write_todos` tool. 
 
 # CRITICAL RULES
 

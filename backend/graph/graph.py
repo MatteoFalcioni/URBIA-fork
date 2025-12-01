@@ -19,6 +19,7 @@ from backend.graph.prompts.analyst import PROMPT
 from backend.graph.prompts.report import report_prompt
 from backend.graph.prompts.reviewer import reviewer_prompt
 from backend.graph.prompts.supervisor import supervisor_prompt
+from backend.graph.prompts.todo import TODOS_TOOL_DESCRIPTION
 
 from backend.graph.state import MyState
 
@@ -220,7 +221,9 @@ def make_graph(
                 messages_to_keep=10,  # Keep last 10 messages after summary
                 summary_prompt=summarizer_prompt,  
             ),
-            TodoListMiddleware(),
+            TodoListMiddleware(
+                tool_description=TODOS_TOOL_DESCRIPTION  # NOTE: customized to make the agent use todo list more often 
+            ),
         ]
     )
 
