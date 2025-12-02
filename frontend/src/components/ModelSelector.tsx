@@ -3,7 +3,7 @@
  * Opens upward and shows the current model.
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronUp } from 'lucide-react';
 import { getThreadConfig, updateThreadConfig } from '@/utils/api';
 import { useChatStore } from '@/store/chatStore';
@@ -25,7 +25,7 @@ export function ModelSelector() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load current model
-  const loadModel = async () => {
+  const loadModel = useCallback(async () => {
     if (!currentThreadId) {
       // No thread: use default config
       const model = defaultConfigModel || 'gpt-4.1';
@@ -44,7 +44,7 @@ export function ModelSelector() {
       const model = defaultConfigModel || 'gpt-4.1';
       setCurrentModel(model);
     }
-  };
+  }, [currentThreadId, defaultConfigModel]);
 
   // Load current model when thread changes
   useEffect(() => {
@@ -57,7 +57,7 @@ export function ModelSelector() {
       // Thread selected: load from API
       loadModel();
     }
-  }, [currentThreadId, defaultConfigModel]);
+  }, [currentThreadId, defaultConfigModel, loadModel]);
 
   // Reload model when opening dropdown to ensure it's up-to-date (only if thread exists)
   useEffect(() => {

@@ -73,7 +73,7 @@ export function ThreadSelector({ onCollapse }: ThreadSelectorProps) {
       setCurrentThreadId(mostRecentThread.id);
       setContextUsage(0, defaultConfig.context_window ?? 30000);
     }
-  }, [threads.length, currentThreadId, setCurrentThreadId, setContextUsage, defaultConfig.context_window]);
+  }, [threads, currentThreadId, setCurrentThreadId, setContextUsage, defaultConfig.context_window]);
 
   // Auto-create thread if none exist (only once, after threads are loaded)
   const hasAttemptedAutoCreate = useRef(false);

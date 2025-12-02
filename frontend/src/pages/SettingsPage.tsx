@@ -95,7 +95,7 @@ export function SettingsPage() {
       }
     }
     loadConfig();
-  }, [currentThreadId]);
+  }, [currentThreadId, defaultConfig, setDefaultConfig]);
 
   // Load API keys on mount
   useEffect(() => {

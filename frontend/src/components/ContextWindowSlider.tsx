@@ -3,7 +3,7 @@
  * Shows in the message input bubble with warning when > 64k.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getThreadConfig, updateThreadConfig } from '@/utils/api';
 import { useChatStore } from '@/store/chatStore';
 
@@ -30,7 +30,7 @@ export function ContextWindowSlider() {
   const isDraggingRef = useRef<boolean>(false);
 
   // Load current context window
-  const loadContextWindow = async () => {
+  const loadContextWindow = useCallback(async () => {
     if (!currentThreadId) {
       // No thread: use default config
       const ctx = defaultConfig.context_window ?? 64000;
@@ -61,18 +61,45 @@ export function ContextWindowSlider() {
       setContextWindow(rounded);
       setLocalValue(rounded);
     }
-  };
+  }, [currentThreadId, defaultConfig.context_window]);
 
   // Load context window when thread changes
   useEffect(() => {
     loadContextWindow();
-  }, [currentThreadId, defaultConfig.context_window]);
+  }, [loadContextWindow]);
 
   const roundToStep = (value: number): number => {
     return CONTEXT_VALUES.reduce((prev, curr) => 
       Math.abs(curr - value) < Math.abs(prev - value) ? curr : prev
     );
   };
+
+  const handleChange = useCallback(async (value: number) => {
+    if (value === contextWindow) return;
+
+    setIsLoading(true);
+    try {
+      if (currentThreadId) {
+        // Update thread config
+        await updateThreadConfig(currentThreadId, { context_window: value });
+        setContextWindow(value);
+        setLocalValue(value);
+      } else {
+        // No thread: update default config in store
+        setDefaultConfig({
+          ...defaultConfig,
+          context_window: value,
+        });
+        setContextWindow(value);
+        setLocalValue(value);
+      }
+    } catch (err) {
+      console.error('Failed to update context window:', err);
+      alert('Failed to update context window');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [contextWindow, currentThreadId, defaultConfig, setDefaultConfig]);
 
   // Handle mouse/touch release globally
   useEffect(() => {
@@ -103,35 +130,7 @@ export function ContextWindowSlider() {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('touchend', handleGlobalTouchEnd);
     };
-  }, []);
-
-  async function handleChange(value: number) {
-    if (value === contextWindow) return;
-
-    setIsLoading(true);
-    try {
-      if (currentThreadId) {
-        // Update thread config
-        await updateThreadConfig(currentThreadId, { context_window: value });
-        setContextWindow(value);
-        setLocalValue(value);
-      } else {
-        // No thread: update default config in store
-        setDefaultConfig({
-          ...defaultConfig,
-          context_window: value,
-        });
-        setContextWindow(value);
-        setLocalValue(value);
-      }
-    } catch (err) {
-      console.error('Failed to update context window:', err);
-      alert('Failed to update context window');
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
+  }, [handleChange]);
 
   const percentage = ((localValue - MIN_CONTEXT) / (MAX_CONTEXT - MIN_CONTEXT)) * 100;
   const showWarningOverlay = localValue > 64000;

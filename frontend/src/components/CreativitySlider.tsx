@@ -3,7 +3,7 @@
  * Shows in the message input bubble below the context window slider.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { getThreadConfig, updateThreadConfig } from '@/utils/api';
 import { useChatStore } from '@/store/chatStore';
 
@@ -24,7 +24,7 @@ export function CreativitySlider() {
   const isDraggingRef = useRef<boolean>(false);
 
   // Load current temperature
-  const loadTemperature = async () => {
+  const loadTemperature = useCallback(async () => {
     if (!currentThreadId) {
       // No thread: use default config
       const temp = defaultConfig.temperature ?? 0.5;
@@ -44,12 +44,39 @@ export function CreativitySlider() {
       setTemperature(temp);
       setLocalValue(temp);
     }
-  };
+  }, [currentThreadId, defaultConfig.temperature]);
+
+  const handleChange = useCallback(async (value: number) => {
+    if (value === temperature) return;
+
+    setIsLoading(true);
+    try {
+      if (currentThreadId) {
+        // Update thread config
+        await updateThreadConfig(currentThreadId, { temperature: value });
+        setTemperature(value);
+        setLocalValue(value);
+      } else {
+        // No thread: update default config in store
+        setDefaultConfig({
+          ...defaultConfig,
+          temperature: value,
+        });
+        setTemperature(value);
+        setLocalValue(value);
+      }
+    } catch (err) {
+      console.error('Failed to update temperature:', err);
+      alert('Failed to update temperature');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [temperature, currentThreadId, defaultConfig, setDefaultConfig]);
 
   // Load temperature when thread changes
   useEffect(() => {
     loadTemperature();
-  }, [currentThreadId, defaultConfig.temperature]);
+  }, [loadTemperature]);
 
   // Handle mouse/touch release globally
   useEffect(() => {
@@ -78,34 +105,7 @@ export function CreativitySlider() {
       document.removeEventListener('mouseup', handleGlobalMouseUp);
       document.removeEventListener('touchend', handleGlobalTouchEnd);
     };
-  }, []);
-
-  async function handleChange(value: number) {
-    if (value === temperature) return;
-
-    setIsLoading(true);
-    try {
-      if (currentThreadId) {
-        // Update thread config
-        await updateThreadConfig(currentThreadId, { temperature: value });
-        setTemperature(value);
-        setLocalValue(value);
-      } else {
-        // No thread: update default config in store
-        setDefaultConfig({
-          ...defaultConfig,
-          temperature: value,
-        });
-        setTemperature(value);
-        setLocalValue(value);
-      }
-    } catch (err) {
-      console.error('Failed to update temperature:', err);
-      alert('Failed to update temperature');
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  }, [handleChange]);
 
   const percentage = ((localValue - MIN_TEMP) / (MAX_TEMP - MIN_TEMP)) * 100;
 

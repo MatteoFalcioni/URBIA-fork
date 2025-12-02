@@ -3,7 +3,7 @@
  * Provides a clean, app-like notification system.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
 
 export type ToastType = 'error' | 'success' | 'warning' | 'info';
@@ -57,20 +57,20 @@ export function Toast({ type, title, message, duration = 5000, onClose }: ToastP
   const Icon = icons[type];
   const colorScheme = colors[type];
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setIsExiting(true);
     setTimeout(() => {
       setIsVisible(false);
       onClose?.();
     }, 200);
-  };
+  }, [onClose]);
 
   useEffect(() => {
     if (duration > 0) {
       const timer = setTimeout(handleClose, duration);
       return () => clearTimeout(timer);
     }
-  }, [duration]);
+  }, [duration, handleClose]);
 
   if (!isVisible) return null;
 
