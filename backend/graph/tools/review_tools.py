@@ -99,7 +99,7 @@ async def update_completeness_score(grade: Annotated[int, "The grade of the comp
     num_todos = len(state.get('todos', []))
 
     if num_todos == 0: 
-        return Command({"messages" : [ToolMessage(content="todo list was empty: completeness score cannot be computed.")]})
+        return Command(update={"messages" : [ToolMessage(content="todo list was empty: completeness score cannot be computed.")]})
 
     print(f"***updating completeness score in update_completeness_score: {grade}")
 
@@ -120,7 +120,7 @@ async def update_relevancy_score(grade: Annotated[int, "The grade of the relevan
     num_sources = len(state.get('sources', []))
 
     if num_sources == 0:
-        return Command({"messages" : [ToolMessage(content="source list was empty: relevancy score cannot be computed.")]})
+        return Command(update={"messages" : [ToolMessage(content="source list was empty: relevancy score cannot be computed.")]})
 
     print(f"***updating relevancy score in update_relevancy_score: {grade}")
     return Command(update={

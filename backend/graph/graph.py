@@ -330,7 +330,6 @@ def make_graph(
         return Command(
                 update={
                     "messages": msg_update,
-                    "analysis_objectives": result["analysis_objectives"],  # updated by analyst
                     "code_logs" : [],  # clean code logs: we transferred their info into code_logs_chunks 
                     "code_logs_chunks" : code_logs_chunks,
                     "sources": result["sources"],  # updated by analyst
