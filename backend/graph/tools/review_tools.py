@@ -1,7 +1,54 @@
 from typing_extensions import Annotated
 from langchain.tools import tool, ToolRuntime
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import ToolMessage
 from langgraph.types import Command
+
+@tool
+def read_sources_tool(
+    runtime: ToolRuntime
+) -> Command:
+    """
+    Get the sources used in the analysis.
+    """
+    state = runtime.state
+    sources = state["sources"]
+    sources_str = "\n".join([f"- {source}" for source in sources])
+
+    return Command(
+        update = {
+            "messages" : [ToolMessage(content=f"Sources: {sources_str}", tool_call_id=runtime.tool_call_id)],
+        }
+    )
+
+@tool
+def read_code_logs_tool(
+    index: Annotated[int, "The index of the code log chunk to read. At least index 0 will always exist."],
+    runtime: ToolRuntime
+) -> Command:
+    """
+    Read a chunk of code logs by specifying the index of the chunk.
+    """
+    state = runtime.state
+    code_logs_chunks = state["code_logs_chunks"]
+
+    if index < 0 or index >= len(code_logs_chunks):
+        return Command(update={"messages" : [ToolMessage(content=f"Invalid index: {index}. Index must be between 0 and {len(code_logs_chunks) - 1}.", tool_call_id=runtime.tool_call_id)]})
+    
+    return Command(update={"messages" : [ToolMessage(content=f"Code log chunk {index}: \n\n{code_logs_chunks[index]}", tool_call_id=runtime.tool_call_id)]})
+
+@tool
+def read_analysis_objectives_tool(
+    runtime: ToolRuntime
+) -> Command:
+    """
+    Use this to read the analysis objectives and their status.
+    """
+    state = runtime.state
+    objectives = state.get("todos", "")
+    if objectives:
+        return Command(update={"messages" : [ToolMessage(content=f"Todos:\n {objectives}", tool_call_id=runtime.tool_call_id)]})
+    else:
+        return Command(update={"messages" : [ToolMessage(content="No todos found.", tool_call_id=runtime.tool_call_id)]})
 
 @tool
 async def approve_analysis_tool(
@@ -47,56 +94,38 @@ async def update_completeness_score(grade: Annotated[int, "The grade of the comp
     Arguments:
         grade: The grade of the completeness score
     """
+
+    state = runtime.state
+    num_todos = len(state.get('todos', []))
+
+    if num_todos == 0: 
+        return Command({"messages" : [ToolMessage(content="todo list was empty: completeness score cannot be computed.")]})
+
     print(f"***updating completeness score in update_completeness_score: {grade}")
+
     return Command(update={
-        "messages" : [ToolMessage(content=f"Completeness score updated to: {grade}", tool_call_id=runtime.tool_call_id)],
-        "completeness_score": grade
+        "messages" : [ToolMessage(content=f"Completeness score updated to: {grade/num_todos:.2f}", tool_call_id=runtime.tool_call_id)],
+        "completeness_score": grade/num_todos
     })
 
 @tool 
-async def update_correctness_score(grade: Annotated[int, "The grade of the correctness score"], runtime: ToolRuntime) -> Command:
+async def update_relevancy_score(grade: Annotated[int, "The grade of the relevancy score"], runtime: ToolRuntime) -> Command:
     """
-    Use this to update the correctness score.
+    Use this to update the relevancy score.
     Arguments:
-        grade: The grade of the correctness score
+        grade: The grade of the relevancy score
     """
-    print(f"***updating correctness score in update_correctness_score: {grade}")
-    return Command(update={
-        "messages" : [ToolMessage(content=f"Correctness score updated to: {grade}", tool_call_id=runtime.tool_call_id)],
-        "correctness_score": grade
-    })
 
-@tool 
-async def update_reliability_score(score: Annotated[int, "The score of the reliability score"], runtime: ToolRuntime) -> Command:
-    """
-    Use this to update the reliability score.
-    Arguments:
-        score: The score of the reliability score
-    Returns:
-        the normalized reliability score between 0 and 10
-    """
-    sources_list = runtime.state['sources']
-    
-    # normalize the score between 0 and 10
-    # get the number of sources: thats the max of the grade (+1 for every right, -1 for every wrong -> ex: 7 sources, grade in [-7,+7])
-    n_sources = len(sources_list)   # it's max grade ossible (if 7 sources, max grade is 7)
-    # 10 : n_sources = normalized_score : score -> normalized_score = score * (10 / n_sources)
-    # also handle errors in division by 0
-    if n_sources != 0:
-        normalized_score = score * (10 / n_sources)    
-    # we choose to not compute it and leave it out of the average in the final grade if there are no sources: 
-    # it could be that the reviewer was assigned a review for a simple analysis that the data analyst performed without using datasets
-    else: 
-        return Command(
-            update={
-                "messages" : [ToolMessage(content=f"There are no sources listed, so the reliability score cannot be computed.", tool_call_id=runtime.tool_call_id)]
-            }
-        )
+    state = runtime.state
+    num_sources = len(state.get('sources', []))
 
-    print(f"***updating reliability score in update_reliability_score: {score}")
+    if num_sources == 0:
+        return Command({"messages" : [ToolMessage(content="source list was empty: relevancy score cannot be computed.")]})
+
+    print(f"***updating relevancy score in update_relevancy_score: {grade}")
     return Command(update={
-        "messages" : [ToolMessage(content=f"Reliability score updated to: {normalized_score}", tool_call_id=runtime.tool_call_id)],
-        "reliability_score": normalized_score
+        "messages" : [ToolMessage(content=f"Relevancy score updated to: {grade/num_sources:.2f}", tool_call_id=runtime.tool_call_id)],
+        "relevancy_score": grade/num_sources
     })
 
 @tool
@@ -104,21 +133,16 @@ async def complete_review_tool(runtime: ToolRuntime) -> Command:
     """
     Use this to complete the review.
     Returns:
-        the final score between 0 and 10
+        the final score between 0 and 1 as a percentage
     """
     completeness_score = runtime.state['completeness_score']
-    reliability_score = runtime.state.get('reliability_score', None)
-    correctness_score = runtime.state['correctness_score']
-
-    if reliability_score is not None:
-        final_score = (completeness_score + reliability_score + correctness_score) / 3
-        note_msg = []
-    else: 
-        final_score = (completeness_score + correctness_score) / 2
-        note_msg = [HumanMessage(content="The reliability score was not found - this means the data analyst did not present any sources. If the analysis did not use any datasets, this is fine. Otherwise, this is an error.")]
+    relevancy_score = runtime.state['relevancy_score']
+    # average scores
+    final_score = (completeness_score + relevancy_score)/2    
 
     print(f"***completing review in complete_review_tool: final score is {final_score}")
     return Command(update={
-        "messages" : [ToolMessage(content=f"Review completed: final score is {final_score}", tool_call_id=runtime.tool_call_id)] + note_msg,
-        "final_score" : final_score
+        "messages" : [ToolMessage(content=f"Analysis review completed: final score is {final_score}. Analysis approved", tool_call_id=runtime.tool_call_id)],
+        "final_score" : final_score,
+        "analysis_status": "approved"
     })

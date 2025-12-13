@@ -45,7 +45,7 @@ def write_report_tool(
 @tool
 def write_source_tool(dataset_id: Annotated[str, "the dataset_id, i.e. the source"], runtime: ToolRuntime) -> Command:
     """
-    Write a source to the list of sources. If the dataset is already in the list, return a message that says so..
+    Write a source to the list of sources. If the dataset is already in the list, returns a message that says so.
     """
     state = runtime.state
     sources = state["sources"]
@@ -55,49 +55,3 @@ def write_source_tool(dataset_id: Annotated[str, "the dataset_id, i.e. the sourc
     else:
         return Command(update={"messages" : [ToolMessage(content=f"Dataset {dataset_id} already in sources.", tool_call_id=runtime.tool_call_id)]})
 
-@tool
-def read_sources_tool(
-    runtime: ToolRuntime
-) -> Command:
-    """
-    Get the sources used in the analysis.
-    """
-    state = runtime.state
-    sources = state["sources"]
-    sources_str = "\n".join([f"- {source}" for source in sources])
-
-    return Command(
-        update = {
-            "messages" : [ToolMessage(content=f"Sources: {sources_str}", tool_call_id=runtime.tool_call_id)],
-        }
-    )
-
-@tool
-def read_code_logs_tool(
-    index: Annotated[int, "The index of the code log chunk to read. At least index 0 will always exist."],
-    runtime: ToolRuntime
-) -> Command:
-    """
-    Read a chunk of code logs by specifying the index of the chunk.
-    """
-    state = runtime.state
-    code_logs_chunks = state["code_logs_chunks"]
-
-    if index < 0 or index >= len(code_logs_chunks):
-        return Command(update={"messages" : [ToolMessage(content=f"Invalid index: {index}. Index must be between 0 and {len(code_logs_chunks) - 1}.", tool_call_id=runtime.tool_call_id)]})
-    
-    return Command(update={"messages" : [ToolMessage(content=f"Code log chunk {index}: \n\n{code_logs_chunks[index]}", tool_call_id=runtime.tool_call_id)]})
-
-@tool
-def read_analysis_objectives_tool(
-    runtime: ToolRuntime
-) -> Command:
-    """
-    Use this to read the analysis objectives and their status.
-    """
-    state = runtime.state
-    objectives = state.get("todos", "")
-    if objectives:
-        return Command(update={"messages" : [ToolMessage(content=f"Todos: {objectives}", tool_call_id=runtime.tool_call_id)]})
-    else:
-        return Command(update={"messages" : [ToolMessage(content="No todos found.", tool_call_id=runtime.tool_call_id)]})

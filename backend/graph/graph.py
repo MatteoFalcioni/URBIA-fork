@@ -24,19 +24,18 @@ from backend.graph.prompts.todo import TODOS_TOOL_DESCRIPTION, WRITE_TODOS_SYSTE
 from backend.graph.state import MyState
 
 from backend.graph.tools.report_tools import (
-    read_code_logs_tool, 
-    read_sources_tool, 
     write_report_tool, 
     write_source_tool, 
-    read_analysis_objectives_tool
 )
 from backend.graph.tools.review_tools import (
     approve_analysis_tool, 
     complete_review_tool, 
     reject_analysis_tool, 
     update_completeness_score, 
-    update_reliability_score, 
-    update_correctness_score
+    update_relevancy_score, 
+    read_code_logs_tool, 
+    read_sources_tool, 
+    read_analysis_objectives_tool,
 )
 from backend.graph.tools.sandbox_tools import (
     execute_code_tool, 
@@ -269,8 +268,7 @@ def make_graph(
             reject_analysis_tool, 
             complete_review_tool, 
             update_completeness_score, 
-            update_reliability_score, 
-            update_correctness_score
+            update_relevancy_score, 
         ],
         system_prompt=reviewer_prompt,
         name="agent_reviewer",

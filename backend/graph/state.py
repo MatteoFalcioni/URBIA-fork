@@ -89,13 +89,6 @@ def int_add(left: int | None, right: int | None) -> int:
         right = 0
     return left + right
 
-def int_replace(left: int | None, right: int | None) -> int:
-    if left is None:
-        left = 0
-    if right is None:
-        right = 0
-    return right
-
 def float_replace(left: float | None, right: float | None) -> float:
     if left is None:
         left = 0.0
@@ -106,18 +99,13 @@ def float_replace(left: float | None, right: float | None) -> float:
 class MyState(AgentState):
     """
     Custom state for the graph.
-    """
-    
-    # summary and token count features (core)
-    summary : Annotated[str, str_replace]
-    
+    """    
     # report features 
     sources : Annotated[list[str], list_add_noduplicates] # list of dataset ids - no duplicated sources!
     reports: Annotated[dict[str, str], merge_dicts]  # key is the title, value is the content 
     last_report_title : Annotated[str, str_replace]  # title of the last report written
     code_logs: Annotated[list[dict[str, str]], list_add]  # list of dicts (we need chronological order!), each dicts is input and output of a code block (out can be stdout or stderr or both)
     code_logs_chunks: Annotated[list[str], list_replace_str]  # list of strings, each string is a chunk of already ordered code logs - we first stringify code_logs correclty, then separate it in chunks (see get_code_logs_tool in report_tools.py)
-    
     # review features
     ## analysys 
     analysis_status : Annotated[Literal["pending", "approved", "rejected", "limit_exceeded", "end_flow"], status_replace]
@@ -125,7 +113,6 @@ class MyState(AgentState):
     ## reroute after review
     reroute_count: Annotated[int, int_add] # counter of how many times the analysis was re-routed to analyst with comments
     ## scores
-    completeness_score : Annotated[int, int_replace]
-    reliability_score : Annotated[int, int_replace]
-    correctness_score : Annotated[int, int_replace]
+    completeness_score : Annotated[float, float_replace]
+    relevancy_score : Annotated[float, float_replace]
     final_score : Annotated[float, float_replace]
