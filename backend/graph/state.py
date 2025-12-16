@@ -1,38 +1,11 @@
 from langchain.agents import AgentState
 from typing import Annotated, Literal
 
-def update_token_count(token_count: int | None = None, token_used: int | None = None) -> int:
-    """
-    Updates the token count
-    """
-    # init safeguards
-    if token_count is None:
-        token_count = 0
-    if token_used is None:
-        token_used = 0
-        
-    # a negative value means reset to that value (used for reset after summary)
-    if token_used < 0:
-        return token_used
-    else:
-        return token_count + token_used
-
 def merge_dicts(
     left: dict[str, str] | None = None,
     right: dict[str, str] | None = None
 ) -> dict[str, str]:
     """Merge two dictionaries. Left takes precedence over right. Used for reports."""
-    if left is None:
-        left = {}
-    if right is None:
-        right = {}
-    return {**left, **right}
-
-def merge_dicts_nested(
-    left: dict[str, dict[str, str]] | None = None, 
-    right: dict[str, dict[str, str]] | None = None
-) -> dict[str, dict[str, str]]:
-    """Merge two nested dictionaries. Left takes precedence over right. Used for sources."""
     if left is None:
         left = {}
     if right is None:
@@ -51,13 +24,12 @@ def list_add(
     
     return left + right
 
-
-def list_replace_str(
+def list_replace(
     left: list[str] | None,
     right: list[str] | None | int
 ) -> list[str]:
     """
-    Replace list of strings entirely instead of concatenating. Used for code logs chunks and analysis objectives.
+    Replace list of strings entirely instead of concatenating. Used for code logs chunks and sources.
     """
     if left is None:
         left = []
@@ -65,27 +37,6 @@ def list_replace_str(
         right = []
 
     return right
-
-def list_add_noduplicates(
-    left: list[str] | None,
-    right: list[str] | None
-) -> list[str]:
-    """
-    Add items from right to left without adding duplicates. Used for sources (dataset IDs).
-    Maintains order: existing items first, then new items.
-    """
-    if left is None:
-        left = []
-    if right is None:
-        right = []
-
-    # Add items from right that aren't already in left
-    result = left.copy()
-    for item in right:
-        if item not in result:
-            result.append(item)
-    
-    return result
 
 def str_replace(
     left: str | None,
@@ -117,13 +68,6 @@ def int_add(left: int | None, right: int | None) -> int:
         right = 0
     return left + right
 
-def int_replace(left: int | None, right: int | None) -> int:
-    if left is None:
-        left = 0
-    if right is None:
-        right = 0
-    return right
-
 def float_replace(left: float | None, right: float | None) -> float:
     if left is None:
         left = 0.0
@@ -131,31 +75,31 @@ def float_replace(left: float | None, right: float | None) -> float:
         right = 0.0
     return right
 
+# NOTE: (!) CRUCIAL
+# If we want to propagate the todos state var, added by the Middleware, to the general state, 
+# we need to still define the todos in state with a reducer. 
+# If we try to pass the todos update to the general state, this will fail because the middleware
+# automatically adds the state var only to the agent that has that middleware!
+
 class MyState(AgentState):
     """
     Custom state for the graph.
-    """
-    
-    # summary and token count features (core)
-    summary : Annotated[str, str_replace]
-    token_count : Annotated[int, update_token_count]
-    
+    """    
     # report features 
-    sources : Annotated[list[str], list_add_noduplicates] # list of dataset ids - no duplicated sources!
+    sources : Annotated[list[str], list_replace] # list of dataset ids; NOTE: we are replace the list of sources entirely after each analysis
     reports: Annotated[dict[str, str], merge_dicts]  # key is the title, value is the content 
     last_report_title : Annotated[str, str_replace]  # title of the last report written
     code_logs: Annotated[list[dict[str, str]], list_add]  # list of dicts (we need chronological order!), each dicts is input and output of a code block (out can be stdout or stderr or both)
-    code_logs_chunks: Annotated[list[str], list_replace_str]  # list of strings, each string is a chunk of already ordered code logs - we first stringify code_logs correclty, then separate it in chunks (see get_code_logs_tool in report_tools.py)
-    
+    code_logs_chunks: Annotated[list[str], list_replace]  # list of strings, each string is a chunk of already ordered code logs - we first stringify code_logs correclty, then separate it in chunks (see get_code_logs_tool in report_tools.py)
     # review features
     ## analysys 
     analysis_status : Annotated[Literal["pending", "approved", "rejected", "limit_exceeded", "end_flow"], status_replace]
     analysis_comments : Annotated[str, str_replace]  # comments for the analyst to improve the analysis
-    analysis_objectives: Annotated[list[str], list_replace_str] # objectives of the analysis
-    ## reroute afte review
+    ## reroute after review
     reroute_count: Annotated[int, int_add] # counter of how many times the analysis was re-routed to analyst with comments
     ## scores
-    completeness_score : Annotated[int, int_replace]
-    reliability_score : Annotated[int, int_replace]
-    correctness_score : Annotated[int, int_replace]
+    completeness_score : Annotated[float, float_replace]
+    relevancy_score : Annotated[float, float_replace]
     final_score : Annotated[float, float_replace]
+    # todos 
+    todos: list[dict]  

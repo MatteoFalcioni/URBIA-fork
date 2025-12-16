@@ -550,6 +550,7 @@ async def get_thread_state(
         todos = state_snapshot.values.get("todos", []) if state_snapshot.values else []
         reports = state_snapshot.values.get("reports", {}) if state_snapshot.values else {}
         last_report_title = state_snapshot.values.get("last_report_title", "") if state_snapshot.values else ""
+        final_score = state_snapshot.values.get("final_score") if state_snapshot.values else None
         context_window = cfg.context_window if (cfg and cfg.context_window) else DEFAULT_CONTEXT_WINDOW
         
         # Get the current report content if available
@@ -560,7 +561,8 @@ async def get_thread_state(
             "context_window": context_window,
             "todos": todos,
             "report_title": last_report_title,
-            "report_content": current_report_content
+            "report_content": current_report_content,
+            "final_score": final_score
         }
     except Exception as e:
         # If state doesn't exist yet (new thread), return defaults
@@ -571,7 +573,8 @@ async def get_thread_state(
             "context_window": context_window,
             "todos": [],
             "report_title": "",
-            "report_content": ""
+            "report_content": "",
+            "final_score": None
         }
 
 
@@ -999,6 +1002,16 @@ async def post_message_stream(
                     # Detect reviewer end
                     elif event_type == "on_chat_model_end" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
+                        
+                        # Get the final_score from state after reviewer completes
+                        try:
+                            state_snapshot = await graph.aget_state(config)
+                            current_state = state_snapshot.values
+                            final_score = current_state.get('final_score')
+                            if final_score is not None:
+                                yield f"data: {json.dumps({'type': 'score_updated', 'score': final_score})}\n\n"
+                        except Exception as e:
+                            logging.warning(f"Failed to get final_score from state: {e}")
                 
                     # Stream tool execution start
                     elif event_type == "on_tool_start":
@@ -1463,6 +1476,16 @@ async def continue_thread(
                     
                     elif event_type == "on_chat_model_end" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
+                        
+                        # Get the final_score from state after reviewer completes
+                        try:
+                            state_snapshot = await graph.aget_state(config)
+                            current_state = state_snapshot.values
+                            final_score = current_state.get('final_score')
+                            if final_score is not None:
+                                yield f"data: {json.dumps({'type': 'score_updated', 'score': final_score})}\n\n"
+                        except Exception as e:
+                            logging.warning(f"Failed to get final_score from state (continue): {e}")
                     
                     elif event_type == "on_tool_start":
                         tool_input = event.get("data", {}).get("input")
@@ -1884,6 +1907,16 @@ async def resume_thread(
                     # Detect reviewer end
                     elif event_type == "on_chat_model_end" and current_agent_node == "reviewer":
                         yield f"data: {json.dumps({'type': 'reviewing', 'status': 'done'})}\n\n"
+                        
+                        # Get the final_score from state after reviewer completes
+                        try:
+                            state_snapshot = await graph.aget_state(config)
+                            current_state = state_snapshot.values
+                            final_score = current_state.get('final_score')
+                            if final_score is not None:
+                                yield f"data: {json.dumps({'type': 'score_updated', 'score': final_score})}\n\n"
+                        except Exception as e:
+                            logging.warning(f"Failed to get final_score from state (resume): {e}")
 
                     
                     # Tool events (same as POST /messages)
