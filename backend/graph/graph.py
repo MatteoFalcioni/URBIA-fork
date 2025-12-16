@@ -328,13 +328,14 @@ def make_graph(
         # (4) update and route back
         # NOTE: if you do not update todos here, the todos are not generally updated! then you canno access them from reviewer
         todos = result.get("todos", [])
+        sources = result.get("sources", [])
 
         return Command(
                 update={
                     "messages": msg_update,
                     "code_logs" : [],  # clean code logs: we transferred their info into code_logs_chunks 
                     "code_logs_chunks" : code_logs_chunks,
-                    "sources": result["sources"],  # updated by analyst
+                    "sources": sources,  # updated by analyst
                     "analysis_comments" : "", # reset analysis comments (if there were any, we used them)
                     "analysis_status" : "pending", # means the analyst performed it, waits for review
                     "todos" : todos, # propagate the todos 
