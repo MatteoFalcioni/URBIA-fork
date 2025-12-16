@@ -113,6 +113,7 @@ export async function getThreadState(threadId: string): Promise<{
   todos: Todo[];
   report_title: string;
   report_content: string;
+  final_score: number | null;
 }> {
   const res = await fetch(`${BASE_URL}/threads/${threadId}/state`);
   if (!res.ok) {
