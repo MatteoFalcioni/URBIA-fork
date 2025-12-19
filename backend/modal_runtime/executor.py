@@ -10,12 +10,20 @@ from .session import volume_name, session_base_dir
 class SandboxExecutor:
     """Manages per-session Modal Sandboxes with persistent state."""
 
-    def __init__(self, session_id: str):
+    def __init__(self, session_id: str, env: dict[str, str] | None = None):
 
         self.session_id = session_id
+        self.env = env or {}
+        
         # Create per-session volume for persistent workspace
         self.volume = modal.Volume.from_name(volume_name(), create_if_missing=True)
         base_dir = session_base_dir(session_id)
+        
+        # Only load AWS secrets if S3 upload is not disabled
+        secrets = []
+        if self.env.get("S3_DISABLE_UPLOAD") != "1":
+            secrets.append(modal.Secret.from_name("aws-credentials-IAM"))
+        
         # Important: fixed sandbox creation by hydrating the Modal App inline (required outside Modal containers).
         hydrated_app = modal.App.lookup("lg-urban-executor", create_if_missing=True)
         self.sandbox = modal.Sandbox.create(
@@ -25,19 +33,19 @@ class SandboxExecutor:
             idle_timeout=60 * 10,  # 10 min idle timeout
             volumes={"/workspace": self.volume},  # link it to above volume
             workdir=base_dir,  # NEW: per session cwd
-            secrets=[
-                modal.Secret.from_name("aws-credentials-IAM")
-            ],  # AWS creds for S3 uploads
+            secrets=secrets,  # AWS creds for S3 uploads (optional)
         )
 
         # ensure per-session dir exists before starting the driver
         self.sandbox.exec("mkdir", "-p", base_dir).wait()
 
+        # Start driver with optional environment variables
         self.process = self.sandbox.exec(
             "python",
             "/root/driver.py",
             bufsize=1,  # CRITICAL: bufsize=1 for line buffering!
             workdir=base_dir,  # Set working directory for driver process
+            env=self.env,  # Pass custom env vars to driver process
         )
 
     def execute(self, code: str, timeout: int = 120) -> Dict[str, Any]:

@@ -10,14 +10,17 @@ def test_modal_sandbox_executor_e2e():
     if not (os.getenv("MODAL_TOKEN_ID") and os.getenv("MODAL_TOKEN_SECRET")):
         pytest.skip("Modal tokens not configured; skipping real Modal integration test")
 
-    # Configure env to avoid real S3 writes during the test
-    os.environ.setdefault("ARTIFACTS_DIR", "/workspace/artifacts")
-    os.environ.setdefault("S3_BUCKET", "unit-test-bucket")
-    os.environ["S3_DISABLE_UPLOAD"] = "1"
-
     from backend.modal_runtime.executor import SandboxExecutor
 
-    execu = SandboxExecutor(session_id="it-e2e")
+    # Pass S3_DISABLE_UPLOAD to the sandbox via env parameter
+    execu = SandboxExecutor(
+        session_id="it-e2e",
+        env={
+            "S3_DISABLE_UPLOAD": "1",
+            "ARTIFACTS_DIR": "/workspace/artifacts",
+            "S3_BUCKET": "unit-test-bucket",
+        },
+    )
     try:
         # 1) First run: basic stdout and state initialization
         r1 = execu.execute("x = 2\nprint('boot')")
