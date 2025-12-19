@@ -159,10 +159,10 @@ export function useSSE(options: UseSSEOptions) {
    * Resume a thread after an interrupt.
    * 
    * @param threadId - Target thread ID
-   * @param resumeValue - Resume data (e.g., {type: 'accept'}, {type: 'edit', edit_instructions: '...'})
+   * @param resumeValue - Resume data (string like 'accept'/'reject' for supervisor HITL, or object like {type: 'accept'} for other interrupts)
    */
   const resumeThread = useCallback(
-    async (threadId: string, resumeValue: Record<string, any>) => {
+    async (threadId: string, resumeValue: string | Record<string, any>) => {
       // Abort any existing stream
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();

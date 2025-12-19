@@ -7,7 +7,7 @@ import { useState } from 'react';
 
 interface InterruptModalProps {
   interruptData: any;
-  onResume: (resumeValue: Record<string, any>) => void;
+  onResume: (resumeValue: string | Record<string, any>) => void;
   onCancel: () => void;
 }
 
@@ -35,7 +35,7 @@ export function InterruptModal({ interruptData, onResume, onCancel }: InterruptM
             </div>
             <div className="p-6 flex-1 overflow-y-auto">
               <p className="text-gray-700 dark:text-slate-300 mb-4">
-                The assistant has completed the analysis and wants to write a report. Do you approve?
+                {interruptData}
               </p>
               <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 text-sm text-amber-800 dark:text-amber-200">
                 <strong>Note:</strong> Once approved, the assistant will generate a comprehensive report based on the analysis performed.
@@ -49,13 +49,13 @@ export function InterruptModal({ interruptData, onResume, onCancel }: InterruptM
                 Cancel
               </button>
               <button
-                onClick={() => onResume({ type: 'reject' })}
+                onClick={() => onResume('reject')}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
               >
                 Reject
               </button>
               <button
-                onClick={() => onResume({ type: 'accept' })}
+                onClick={() => onResume('accept')}
                 className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
               >
                 Approve
