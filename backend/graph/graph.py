@@ -150,7 +150,7 @@ def make_graph(
         
         llm = ChatOpenAI(
             **llm_kwargs,
-            stream_usage=True  # NOTE: SUPER IMPORTANT WHEN USING `astream_events`! If we do not use it we do not get the usage metadata in last msg (with `astream` instead we do always)
+            stream_usage=True  # to get usr metadata with astream_events (crucial for token count, but that feature is deprecated)
         )
     elif model_name.startswith("claude-"):
         #https://docs.claude.com/en/docs/about-claude/models/overview#model-names
@@ -159,10 +159,10 @@ def make_graph(
         
         llm = ChatAnthropic(
             **llm_kwargs,
-            stream_usage=True  # NOTE: SUPER IMPORTANT WHEN USING `astream_events`! If we do not use it we do not get the usage metadata in last msg (with `astream` instead we do always)
+            stream_usage=True  
         )
     
-    # Use default prompt, + custom prompt as string (LangChain v1 expects string, not SystemMessage)
+    # Use default prompt, + custom prompt as string (LangChain v1.0 expects string, not SystemMessage)
     prompt_text = PROMPT
     # if system_prompt is provided, add it to the prompt
     # safety measure
@@ -196,7 +196,7 @@ def make_graph(
     tools = [
         *api_tools,
         *dataset_tools,
-        *sit_tools,
+        # *sit_tools,
         *report_tools,
     ]
 

@@ -1305,7 +1305,7 @@ async def post_message_stream(
 
 # Resume endpoint for handling interrupts (human-in-the-loop)
 class ResumeRequest(BaseModel):
-    resume_value: dict  # The resume data from user (type: accept/reject/edit, etc.)
+    resume_value: str | dict  # String for supervisor HITL ('accept'/'reject'), dict for other interrupts
 
 
 @router.post("/threads/{thread_id}/continue")
@@ -1741,8 +1741,8 @@ async def resume_thread(
     Uses the same graph instance (via singleton checkpointer) and config to resume execution.
     
     Resume value format depends on the interrupt:
-    - For write_report approval: {"type": "accept"} or {"type": "reject"}
-    - For human approval: {"type": "accept"} or {"type": "edit", "edit_instructions": "..."}
+    - For supervisor HITL (assign to report writer): "accept" or "reject" (string)
+    - For other interrupts (if any): {"type": "accept"} or other dict formats
     """
     from backend.graph.graph import make_graph
     from backend.main import get_thread_lock, _checkpointer_cm
@@ -1778,7 +1778,7 @@ async def resume_thread(
     )
     
     # SAME config with SAME thread_id - checkpointer will restore state
-    config = {"configurable": {"thread_id": str(thread_id)}, "recursion_limit": 40}
+    config = {"configurable": {"thread_id": str(thread_id)}, "recursion_limit": 150}
     
     # Stream response using SSE
     async def stream_resume():

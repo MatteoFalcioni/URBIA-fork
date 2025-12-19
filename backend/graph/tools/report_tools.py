@@ -16,22 +16,6 @@ def write_report_tool(
     """
     print("***writing report in write_report_tool")
 
-    # refine this message in frontend and simplify it here in backend (the user will not see this below)
-    response = interrupt(f"The model has finished its analysis and wants to write a report. To continue, input 'yes'. To reject, input 'no'.")
-
-    if response["type"] == "accept":
-        print("***accepted write report in write_report_tool")
-        pass  # accepted write report: therefore, continue flow 
-    elif response["type"] == "reject":
-        print("***rejected write report in write_report_tool")
-        return Command(update={
-            "messages": [
-                ToolMessage(
-                    content="Report writing rejected by the user.", 
-                    tool_call_id=runtime.tool_call_id
-                )], 
-            })  
-
     report_dict = {report_title: report_content}  
 
     return Command(  
