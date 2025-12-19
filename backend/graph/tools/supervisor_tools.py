@@ -5,53 +5,83 @@ from langgraph.types import Command, interrupt
 
 
 # helper function to create handoff tool
-def create_handoff_tool(*, agent_name: str, description: str | None = None):    #  * means: from here on, all arguments must be passed as keyword arguments
+def create_handoff_tool(
+    *, agent_name: str, description: str | None = None
+):  #  * means: from here on, all arguments must be passed as keyword arguments
     name = f"transfer_to_{agent_name}"
     description = description or f"Ask {agent_name} for help."
 
     # the actual handoff tool
     @tool(name, description=description)
-    def handoff_tool(task: Annotated[str, "The task that the subagent should perform"], runtime : ToolRuntime) -> Command:
+    def handoff_tool(
+        task: Annotated[str, "The task that the subagent should perform"],
+        runtime: ToolRuntime,
+    ) -> Command:
 
-        tool_msg = ToolMessage(content=f"Successfully transferred to {agent_name}", tool_call_id=runtime.tool_call_id)
-        task_msg = HumanMessage(content=f"The agent supervisor advices you to perform the following task : \n{task}")
+        tool_msg = ToolMessage(
+            content=f"Successfully transferred to {agent_name}",
+            tool_call_id=runtime.tool_call_id,
+        )
+        task_msg = HumanMessage(
+            content=f"The agent supervisor advices you to perform the following task : \n{task}"
+        )
         state = runtime.state
-        
+
         return Command(
-            goto=agent_name,  
-            update={**state, "messages": state["messages"] + [tool_msg] + [task_msg]},  
-            graph=Command.PARENT 
+            goto=agent_name,
+            update={**state, "messages": state["messages"] + [tool_msg] + [task_msg]},
+            graph=Command.PARENT,
         )
 
     return handoff_tool
 
-def create_handoff_tool_HITL(*, agent_name : str, description: str | None = None):
+
+def create_handoff_tool_HITL(*, agent_name: str, description: str | None = None):
     name = f"transfer_to_{agent_name}"
     description = description or f"Ask {agent_name} for help."
 
     @tool(name, description=description)
-    def handoff_tool_HITL(task: Annotated[str, "The task that the subagent should perform"], runtime : ToolRuntime) -> Command:
+    def handoff_tool_HITL(
+        task: Annotated[str, "The task that the subagent should perform"],
+        runtime: ToolRuntime,
+    ) -> Command:
 
-        decision = interrupt(value=f"The agent supervisor wants to call the {agent_name} to perform the following task: {task}. Do you approve?")
+        decision = interrupt(
+            value=f"The agent supervisor wants to call the {agent_name} to perform the following task: {task}. Do you approve?"
+        )
 
-        if decision == 'accept':
+        if decision == "accept":
             goto = agent_name
-            tool_msg = [ToolMessage(content=f"Successfully transferred to {agent_name}", tool_call_id=runtime.tool_call_id)] 
-            task_msg = [HumanMessage(content=f"The agent supervisor advices you to perform the following task : \n{task}")]
-            msgs = tool_msg + task_msg 
+            tool_msg = [
+                ToolMessage(
+                    content=f"Successfully transferred to {agent_name}",
+                    tool_call_id=runtime.tool_call_id,
+                )
+            ]
+            task_msg = [
+                HumanMessage(
+                    content=f"The agent supervisor advices you to perform the following task : \n{task}"
+                )
+            ]
+            msgs = tool_msg + task_msg
         else:
-            goto = 'supervisor'
-            msgs = [ToolMessage(content=f"Routing to {agent_name} was rejected by the user.")]
-        
+            goto = "supervisor"
+            msgs = [
+                ToolMessage(
+                    content=f"Routing to {agent_name} was rejected by the user."
+                )
+            ]
+
         state = runtime.state
 
         return Command(
-            goto=goto,  
-            update={**state, "messages": state["messages"] + msgs},  
-            graph=Command.PARENT 
+            goto=goto,
+            update={**state, "messages": state["messages"] + msgs},
+            graph=Command.PARENT,
         )
-    
+
     return handoff_tool_HITL
+
 
 # Handoffs
 assign_to_analyst = create_handoff_tool(

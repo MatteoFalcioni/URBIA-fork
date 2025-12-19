@@ -44,6 +44,3 @@ def test_modal_sandbox_executor_e2e():
     finally:
         # 3) Terminate the sandbox cleanly
         execu.terminate()
-
-
-

@@ -33,7 +33,7 @@ def run_driver_with_commands(commands, env=None, timeout=5):
             # Write command
             proc.stdin.write(json.dumps(cmd) + "\n")
             proc.stdin.flush()
-            
+
             # Read response
             line = proc.stdout.readline()
             if not line:
@@ -41,11 +41,13 @@ def run_driver_with_commands(commands, env=None, timeout=5):
                 proc.poll()
                 if proc.returncode is not None:
                     stderr_output = proc.stderr.read()
-                    raise RuntimeError(f"Driver process ended unexpectedly with code {proc.returncode}. Stderr: {stderr_output}")
+                    raise RuntimeError(
+                        f"Driver process ended unexpectedly with code {proc.returncode}. Stderr: {stderr_output}"
+                    )
                 raise RuntimeError("Driver process ended unexpectedly")
-            
+
             outputs.append(json.loads(line.strip()))
-        
+
         return outputs
     finally:
         # Gracefully close stdin so the driver loop can exit
@@ -81,5 +83,3 @@ def test_driver_state_persists_and_stdout_roundtrip():
         assert outputs[0]["stderr"] == ""
         assert "42" in outputs[1]["stdout"].strip()
         assert outputs[1]["stderr"] == ""
-
-

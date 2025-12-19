@@ -1,7 +1,7 @@
 # taken from https://github.com/langchain-ai/langchain/blob/master/libs/langchain_v1/langchain/agents/middleware/todo.py
 # and slightly modified to make the agent use the tool more often.
 
-TODOS_TOOL_DESCRIPTION="""Use this tool to create and manage a structured task list for your current work session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
+TODOS_TOOL_DESCRIPTION = """Use this tool to create and manage a structured task list for your current work session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.
 
 ## When to Use This Tool
 Use this tool in these scenarios:
@@ -71,7 +71,7 @@ It is critical that you mark todos as completed as soon as you are done with a s
 """
 
 
-# taken out: 
+# taken out:
 # 1. Complex multi-step tasks - When a task requires 3 or more distinct steps or actions
 # 2. Non-trivial and complex tasks - Tasks that require careful planning or multiple operations
 # 3. The task can be completed in less than 3 trivial steps

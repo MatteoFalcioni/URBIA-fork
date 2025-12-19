@@ -12,8 +12,8 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 # Context variables for the current graph execution
-_db_session: ContextVar[Optional[AsyncSession]] = ContextVar('db_session', default=None)
-_thread_id: ContextVar[Optional[uuid.UUID]] = ContextVar('thread_id', default=None)
+_db_session: ContextVar[Optional[AsyncSession]] = ContextVar("db_session", default=None)
+_thread_id: ContextVar[Optional[uuid.UUID]] = ContextVar("thread_id", default=None)
 
 
 def set_db_session(session: AsyncSession) -> None:
@@ -44,4 +44,3 @@ def clear_db_session() -> None:
 def clear_thread_id() -> None:
     """Clear the thread ID from the current execution context."""
     _thread_id.set(None)
-

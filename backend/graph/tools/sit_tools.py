@@ -19,19 +19,23 @@ from folium import Element
 # --------------------------
 _google_geocoding_tool = None
 
+
 def get_google_geocoding_tool():
     """Lazy load Google Geocoding tool only when needed."""
     global _google_geocoding_tool
     if _google_geocoding_tool is None:
         from langchain_google_community.geocoding import GoogleGeocodingTool
+
         _google_geocoding_tool = GoogleGeocodingTool()
     return _google_geocoding_tool
 
-#-------------------------------
-# single ortofoto tool
-#-------------------------------
 
-def folium_ortho_fn(year, bbox=None, zoom_start=16, save_path: Optional[Path]=None):
+# -------------------------------
+# single ortofoto tool
+# -------------------------------
+
+
+def folium_ortho_fn(year, bbox=None, zoom_start=16, save_path: Optional[Path] = None):
     # Center on bbox or Piazza Maggiore-ish fallback
     if bbox:
         lon = (bbox[0] + bbox[2]) / 2
@@ -39,7 +43,9 @@ def folium_ortho_fn(year, bbox=None, zoom_start=16, save_path: Optional[Path]=No
     else:
         lat, lon = 44.4939, 11.3426  # Bologna centro
 
-    m = folium.Map(location=[lat, lon], zoom_start=zoom_start, tiles=None, control_scale=True)
+    m = folium.Map(
+        location=[lat, lon], zoom_start=zoom_start, tiles=None, control_scale=True
+    )
 
     url = f"http://sitmappe.comune.bologna.it/tms/tileserver/Ortofoto{year}/{{z}}/{{x}}/{{y}}.png"
     # If tiles appear vertically flipped, set tms=True below.
@@ -62,16 +68,19 @@ def folium_ortho_fn(year, bbox=None, zoom_start=16, save_path: Optional[Path]=No
     else:
         return m
 
+
 @tool(
     name_or_callable="get_ortofoto",
     description="Download ortofoto for a given year, centered around a specific location (if provided) from Comune di Bologna.",
 )
 # bbox: (min_lon, min_lat, max_lon, max_lat) in WGS84
 async def folium_ortho(
-    year: Annotated[int, "year of reference"], 
+    year: Annotated[int, "year of reference"],
     runtime: ToolRuntime,
-    query: Optional[Annotated[str, "query to get the ortofoto of a specific location"]]=None,
-    )-> Command:
+    query: Optional[
+        Annotated[str, "query to get the ortofoto of a specific location"]
+    ] = None,
+) -> Command:
 
     bbox = None
     # if the agent queried a location, build bbox taking the location as the center
@@ -79,7 +88,10 @@ async def folium_ortho(
         try:
             result = get_google_geocoding_tool().run(query)
             # coordinates of the center of the bbox
-            lat, lon = result[0]['geometry']['location']['lat'], result[0]['geometry']['location']['lng']
+            lat, lon = (
+                result[0]["geometry"]["location"]["lat"],
+                result[0]["geometry"]["location"]["lng"],
+            )
             # construct bbox from lat and lon in a square of side 1000 meters
             bbox = [lon - 0.0025, lat - 0.0025, lon + 0.0025, lat + 0.0025]
         except Exception as e:
@@ -89,7 +101,7 @@ async def folium_ortho(
                     "messages": [
                         ToolMessage(
                             content=f"Error getting coordinates of the location: {e}",
-                            tool_call_id=runtime.tool_call_id
+                            tool_call_id=runtime.tool_call_id,
                         )
                     ]
                 }
@@ -97,42 +109,36 @@ async def folium_ortho(
 
     try:
         # Generate the folium map in a temporary file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.html', delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".html", delete=False
+        ) as tmp_file:
             temp_path = Path(tmp_file.name)
-        
-        folium_map = folium_ortho_fn(
-            year=year,
-            bbox=bbox,
-            zoom_start=16,
-            save_path=temp_path
-        )
-        
+
+        folium_ortho_fn(year=year, bbox=bbox, zoom_start=16, save_path=temp_path)
+
         # Get context
         from backend.graph.context import get_db_session, get_thread_id
+
         db_session = get_db_session()
         thread_id = get_thread_id()
-        
+
         # Upload to S3
         html_bytes = temp_path.read_bytes()
         sha256 = hashlib.sha256(html_bytes).hexdigest()
         s3_key = f"output/artifacts/{sha256[:2]}/{sha256[2:4]}/{sha256}"
-        
-        region = os.getenv('AWS_REGION', 'eu-central-1')
+
+        region = os.getenv("AWS_REGION", "eu-central-1")
         s3 = boto3.client(
-            's3',
-            region_name=region,
-            config=Config(signature_version='s3v4')
+            "s3", region_name=region, config=Config(signature_version="s3v4")
         )
-        bucket = os.getenv('S3_BUCKET', 'lg-urban-prod')
+        bucket = os.getenv("S3_BUCKET", "lg-urban-prod")
         s3.put_object(
-            Bucket=bucket,
-            Key=s3_key,
-            Body=html_bytes,
-            ContentType='text/html'
+            Bucket=bucket, Key=s3_key, Body=html_bytes, ContentType="text/html"
         )
-        
+
         # Insert metadata into database
         from backend.artifacts.ingest import ingest_artifact_metadata
+
         desc = await ingest_artifact_metadata(
             session=db_session,
             thread_id=thread_id,
@@ -144,28 +150,28 @@ async def folium_ortho(
             session_id=str(thread_id),
             tool_call_id=runtime.tool_call_id,
         )
-        
+
         # Clean up temp file
         temp_path.unlink()
-        
+
         descriptors = [desc]
-        
+
         if descriptors:
             artifact = descriptors[0]
             structured_artifact = {
-                "name": artifact.get('name', f'ortofoto_{year}.html'),
-                "mime": artifact.get('mime', 'text/html'),
-                "url": artifact.get('url', ''),
-                "size": artifact.get('size', 0)
+                "name": artifact.get("name", f"ortofoto_{year}.html"),
+                "mime": artifact.get("mime", "text/html"),
+                "url": artifact.get("url", ""),
+                "size": artifact.get("size", 0),
             }
-            
+
             return Command(
                 update={
                     "messages": [
                         ToolMessage(
                             content=f"Ortofoto {year} map generated successfully",
                             artifact=[structured_artifact],
-                            tool_call_id=runtime.tool_call_id
+                            tool_call_id=runtime.tool_call_id,
                         )
                     ]
                 }
@@ -176,29 +182,31 @@ async def folium_ortho(
                     "messages": [
                         ToolMessage(
                             content=f"Failed to process ortofoto {year} map",
-                            tool_call_id=runtime.tool_call_id
+                            tool_call_id=runtime.tool_call_id,
                         )
                     ]
                 }
             )
-        
+
     except Exception as e:
         return Command(
             update={
                 "messages": [
                     ToolMessage(
                         content=f"Error generating ortofoto {year}: {str(e)}",
-                        tool_call_id=runtime.tool_call_id
+                        tool_call_id=runtime.tool_call_id,
                     )
                 ]
             }
         )
+
 
 # -------------------------------
 # compare_ortofoto tool (DualMap)
 # -------------------------------
 
 _AVAILABLE_YEARS = {2017, 2018, 2020, 2021, 2022, 2023, 2024}
+
 
 def _make_dual_ortho_map(
     left_year: int,
@@ -250,14 +258,14 @@ def _make_dual_ortho_map(
             tiles=url,
             name=f"Ortofoto {year}",
             attr=f"© Comune di Bologna - {side_label} {year}",
-            overlay=False,         # base layer in each panel
+            overlay=False,  # base layer in each panel
             control=True,
             max_zoom=20,
             max_native_zoom=20,
             tms=tms,
         )
 
-    _tile(left_year,  "LEFT").add_to(m.m1)
+    _tile(left_year, "LEFT").add_to(m.m1)
     _tile(right_year, "RIGHT").add_to(m.m2)
 
     # Optional LayerControl per panel
@@ -266,11 +274,11 @@ def _make_dual_ortho_map(
 
     # Keep both panels on the same extent
     if bbox and None not in (min_lat, min_lon, max_lat, max_lon):
-        m.m1.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]])   # type: ignore
-        m.m2.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]])   # type: ignore
+        m.m1.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]])  # type: ignore
+        m.m2.fit_bounds([[min_lat, min_lon], [max_lat, max_lon]])  # type: ignore
 
     # Visible vertical divider via CSS borders on both panel containers
-    left_id  = m.m1.get_name()
+    left_id = m.m1.get_name()
     right_id = m.m2.get_name()
     css = f"""
     <style>
@@ -278,10 +286,11 @@ def _make_dual_ortho_map(
       #{right_id} {{ border-left:  {divider_px}px solid rgba(255,255,255,0.9) !important; }}
     </style>
     """
-    m.get_root().html.add_child(Element(css)) # type: ignore
+    m.get_root().html.add_child(Element(css))  # type: ignore
 
     note = " ".join(note_parts) if note_parts else None
     return m, note
+
 
 @tool(
     name_or_callable="compare_ortofoto",
@@ -293,7 +302,9 @@ def _make_dual_ortho_map(
 async def compare_ortofoto(
     left_year: Annotated[int, "left ortofoto year"],
     right_year: Annotated[int, "right ortofoto year"],
-    query: Optional[Annotated[str, "name of the location to center the ortofoto around"]]=None,
+    query: Optional[
+        Annotated[str, "name of the location to center the ortofoto around"]
+    ] = None,
     runtime: ToolRuntime = None,
 ) -> Command:
     """
@@ -308,9 +319,17 @@ async def compare_ortofoto(
         try:
             result = get_google_geocoding_tool().run(query)
             # coordinates of the center of the bbox
-            lat, lon = result[0]['geometry']['location']['lat'], result[0]['geometry']['location']['lng']
+            lat, lon = (
+                result[0]["geometry"]["location"]["lat"],
+                result[0]["geometry"]["location"]["lng"],
+            )
             # construct bbox from lat and lon in a square of side 1000 meters
-            bbox = [lon - 0.0025, lat - 0.0025, lon + 0.0025, lat + 0.0025] # these 0.005 are degrees, not meters <- estimate
+            bbox = [
+                lon - 0.0025,
+                lat - 0.0025,
+                lon + 0.0025,
+                lat + 0.0025,
+            ]  # these 0.005 are degrees, not meters <- estimate
         except Exception as e:
             print(f"Error getting coordinates of the location: {e}")
             return Command(
@@ -318,7 +337,7 @@ async def compare_ortofoto(
                     "messages": [
                         ToolMessage(
                             content=f"Error getting coordinates of the location: {e}",
-                            tool_call_id=runtime.tool_call_id
+                            tool_call_id=runtime.tool_call_id,
                         )
                     ]
                 }
@@ -340,30 +359,27 @@ async def compare_ortofoto(
 
         # Get context
         from backend.graph.context import get_db_session, get_thread_id
+
         db_session = get_db_session()
         thread_id = get_thread_id()
-        
+
         # Upload to S3
         html_bytes = temp_path.read_bytes()
         sha256 = hashlib.sha256(html_bytes).hexdigest()
         s3_key = f"output/artifacts/{sha256[:2]}/{sha256[2:4]}/{sha256}"
-        
-        region = os.getenv('AWS_REGION', 'eu-central-1')
+
+        region = os.getenv("AWS_REGION", "eu-central-1")
         s3 = boto3.client(
-            's3',
-            region_name=region,
-            config=Config(signature_version='s3v4')
+            "s3", region_name=region, config=Config(signature_version="s3v4")
         )
-        bucket = os.getenv('S3_BUCKET', 'lg-urban-prod')
+        bucket = os.getenv("S3_BUCKET", "lg-urban-prod")
         s3.put_object(
-            Bucket=bucket,
-            Key=s3_key,
-            Body=html_bytes,
-            ContentType='text/html'
+            Bucket=bucket, Key=s3_key, Body=html_bytes, ContentType="text/html"
         )
-        
+
         # Insert metadata into database
         from backend.artifacts.ingest import ingest_artifact_metadata
+
         desc = await ingest_artifact_metadata(
             session=db_session,
             thread_id=thread_id,
@@ -375,14 +391,14 @@ async def compare_ortofoto(
             session_id=str(thread_id),
             tool_call_id=runtime.tool_call_id,
         )
-        
+
         # Clean up temp file
         temp_path.unlink()
-        
+
         descriptors = [desc]
 
         artifact_struct = None
-        if descriptors: # means it was ingested correctly
+        if descriptors:  # means it was ingested correctly
 
             message = f"Dual ortofoto: {left_year} (left) vs {right_year} (right) generated and shown successfully"
             if note:
@@ -390,24 +406,26 @@ async def compare_ortofoto(
 
             a = descriptors[0]
             artifact_struct = {
-                "name": a.get("name", f"ortofoto_dual_{left_year}_vs_{right_year}.html"),
+                "name": a.get(
+                    "name", f"ortofoto_dual_{left_year}_vs_{right_year}.html"
+                ),
                 "mime": a.get("mime", "text/html"),
                 "url": a.get("url", ""),
                 "size": a.get("size", 0),
             }
-            
+
             return Command(
                 update={
                     "messages": [
                         ToolMessage(
                             content=message,
                             artifact=[artifact_struct],
-                            tool_call_id=runtime.tool_call_id
+                            tool_call_id=runtime.tool_call_id,
                         )
                     ]
                 }
             )
-        else: # means it was not ingested correctly
+        else:  # means it was not ingested correctly
 
             message = f"Failed to ingest and show ortofoto {left_year} (left) vs {right_year} (right) map"
             if note:
@@ -416,29 +434,28 @@ async def compare_ortofoto(
             return Command(
                 update={
                     "messages": [
-                        ToolMessage(
-                            content=message,
-                            tool_call_id=runtime.tool_call_id
-                        )
+                        ToolMessage(content=message, tool_call_id=runtime.tool_call_id)
                     ]
                 }
             )
-        
-    except Exception as e: # means it was not generated correctly
+
+    except Exception as e:  # means it was not generated correctly
         return Command(
-            update={    
+            update={
                 "messages": [
                     ToolMessage(
                         content=f"Error generating ortofoto {left_year} (left) vs {right_year} (right) map: {str(e)}",
-                        tool_call_id=runtime.tool_call_id
+                        tool_call_id=runtime.tool_call_id,
                     )
                 ]
             }
         )
 
+
 # -------------------------------
 # view_3d_model tool
 # -------------------------------
+
 
 def _create_bologna_3d_html() -> str:
     """
@@ -499,38 +516,35 @@ async def view_3d_model(
     try:
         # Generate the HTML content
         html_content = _create_bologna_3d_html()
-        
+
         # Save to a temporary file
         with tempfile.NamedTemporaryFile(mode="w", suffix=".html", delete=False) as tmp:
             tmp.write(html_content)
             temp_path = Path(tmp.name)
-        
+
         # Get context
         from backend.graph.context import get_db_session, get_thread_id
+
         db_session = get_db_session()
         thread_id = get_thread_id()
-        
+
         # Upload to S3
         html_bytes = temp_path.read_bytes()
         sha256 = hashlib.sha256(html_bytes).hexdigest()
         s3_key = f"output/artifacts/{sha256[:2]}/{sha256[2:4]}/{sha256}"
-        
-        region = os.getenv('AWS_REGION', 'eu-central-1')
+
+        region = os.getenv("AWS_REGION", "eu-central-1")
         s3 = boto3.client(
-            's3',
-            region_name=region,
-            config=Config(signature_version='s3v4')
+            "s3", region_name=region, config=Config(signature_version="s3v4")
         )
-        bucket = os.getenv('S3_BUCKET', 'lg-urban-prod')
+        bucket = os.getenv("S3_BUCKET", "lg-urban-prod")
         s3.put_object(
-            Bucket=bucket,
-            Key=s3_key,
-            Body=html_bytes,
-            ContentType='text/html'
+            Bucket=bucket, Key=s3_key, Body=html_bytes, ContentType="text/html"
         )
-        
+
         # Insert metadata into database
         from backend.artifacts.ingest import ingest_artifact_metadata
+
         desc = await ingest_artifact_metadata(
             session=db_session,
             thread_id=thread_id,
@@ -542,12 +556,12 @@ async def view_3d_model(
             session_id=str(thread_id),
             tool_call_id=runtime.tool_call_id,
         )
-        
+
         # Clean up temp file
         temp_path.unlink()
-        
+
         descriptors = [desc]
-        
+
         if descriptors:
             artifact = descriptors[0]
             artifact_struct = {
@@ -556,14 +570,14 @@ async def view_3d_model(
                 "url": artifact.get("url", ""),
                 "size": artifact.get("size", 0),
             }
-            
+
             return Command(
                 update={
                     "messages": [
                         ToolMessage(
                             content="Bologna 3D model viewer generated successfully. You can now explore the city in 3D.",
                             artifact=[artifact_struct],
-                            tool_call_id=runtime.tool_call_id
+                            tool_call_id=runtime.tool_call_id,
                         )
                     ]
                 }
@@ -574,19 +588,19 @@ async def view_3d_model(
                     "messages": [
                         ToolMessage(
                             content="Failed to generate the 3D model viewer",
-                            tool_call_id=runtime.tool_call_id
+                            tool_call_id=runtime.tool_call_id,
                         )
                     ]
                 }
             )
-            
+
     except Exception as e:
         return Command(
             update={
                 "messages": [
                     ToolMessage(
                         content=f"Error generating 3D model viewer: {str(e)}",
-                        tool_call_id=runtime.tool_call_id
+                        tool_call_id=runtime.tool_call_id,
                     )
                 ]
             }

@@ -12,9 +12,10 @@ from langchain_core.messages import ToolMessage
 from langchain.tools import tool, ToolRuntime
 from langgraph.types import Command
 
-import modal
 
-from backend.opendata_api.helpers import is_dataset_too_heavy, get_dataset_bytes  # change heavy detection this to be more reliable
+from backend.opendata_api.helpers import (
+    get_dataset_bytes,
+)  # change heavy detection this to be more reliable
 from backend.opendata_api.init_client import client
 from backend.modal_runtime.executor import SandboxExecutor
 from backend.modal_runtime.session import session_base_dir
@@ -24,6 +25,7 @@ from backend.graph.context import get_thread_id
 
 # Session-based executor cache: one sandbox per session
 _executor_cache: Dict[str, SandboxExecutor] = {}
+
 
 # ===== executor management =====
 def get_or_create_executor(session_id: str) -> SandboxExecutor:
@@ -39,25 +41,31 @@ def terminate_session_executor(session_id: str) -> None:
         executor = _executor_cache.pop(session_id)
         executor.terminate()
 
+
 # ===== tools =====
+
 
 # -----------------
 # execute code tool
 # -----------------
-@tool(
-    name_or_callable="execute_code",
-    description="Use this to execute python code."
-)
-def execute_code_tool(code: Annotated[str, "The python code to execute."],
-                 runtime: ToolRuntime) -> Command:
+@tool(name_or_callable="execute_code", description="Use this to execute python code.")
+def execute_code_tool(
+    code: Annotated[str, "The python code to execute."], runtime: ToolRuntime
+) -> Command:
     """Use this to execute python code."""
     thread_id = get_thread_id()
     if not thread_id:
-        return Command(update={"messages": [ToolMessage(
-            content="Error: thread_id not set in context. Cannot execute code.",
-            tool_call_id=runtime.tool_call_id
-        )]})
-    
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content="Error: thread_id not set in context. Cannot execute code.",
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
     session_id = str(thread_id)
     executor = get_or_create_executor(session_id)
     result = executor.execute(code)
@@ -66,31 +74,39 @@ def execute_code_tool(code: Annotated[str, "The python code to execute."],
     artifacts = result.pop("artifacts")
     return Command(
         update={
-            "messages": [ToolMessage(
-                content=json.dumps(result, ensure_ascii=False), 
-                tool_call_id=runtime.tool_call_id, 
-                artifact=artifacts
-            )],
-            "code_logs": [{"input": code, "stdout": result.get("stdout", ""), "stderr": result.get("stderr", "")}]
+            "messages": [
+                ToolMessage(
+                    content=json.dumps(result, ensure_ascii=False),
+                    tool_call_id=runtime.tool_call_id,
+                    artifact=artifacts,
+                )
+            ],
+            "code_logs": [
+                {
+                    "input": code,
+                    "stdout": result.get("stdout", ""),
+                    "stderr": result.get("stderr", ""),
+                }
+            ],
         }
     )
+
 
 # -----------------
 # load dataset tool
 # -----------------
 @tool(
     name_or_callable="load_dataset",
-    description="Load a dataset by ID into the workspace. After loading, you can access it in code with the code execution tool at the path 'datasets/{dataset_id}.parquet' from the working directory."
+    description="Load a dataset by ID into the workspace. After loading, you can access it in code with the code execution tool at the path 'datasets/{dataset_id}.parquet' from the working directory.",
 )
 async def load_dataset_tool(
-    dataset_id: Annotated[str, "The dataset ID to load."],
-    runtime: ToolRuntime
+    dataset_id: Annotated[str, "The dataset ID to load."], runtime: ToolRuntime
 ) -> Command:
     """
     First, checks if the dataset was already loaded in the workspace.
 
     If not, then loads a dataset into the sandbox:
-    - If the dataset exists in S3 input bucket, download from there. 
+    - If the dataset exists in S3 input bucket, download from there.
     - Else, fetch it from the OpenData API AND THEN upload it to S3 (so it's faster next time).
     Returns the written path (relative to /workspace).
     """
@@ -98,10 +114,16 @@ async def load_dataset_tool(
     # get session id from thread id
     thread_id = get_thread_id()
     if not thread_id:
-        return Command(update={"messages": [ToolMessage(
-            content="Error: thread_id not set in context. Cannot load dataset.",
-            tool_call_id=runtime.tool_call_id
-        )]})
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content="Error: thread_id not set in context. Cannot load dataset.",
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
     session_id = str(thread_id)
     executor = get_or_create_executor(session_id)
 
@@ -122,7 +144,7 @@ print(json.dumps(result))
 """
     check_result = executor.execute(check_code)
     stdout = check_result.get("stdout", "").strip()
-    
+
     try:
         check_data = json.loads(stdout) if stdout else {}
         if check_data.get("exists", False):
@@ -130,18 +152,26 @@ print(json.dumps(result))
             base_dir = session_base_dir(session_id)
             abs_path = f"{base_dir}/datasets/{dataset_id}.parquet"
             size_bytes = check_data.get("size_bytes", 0)
-            return Command(update={"messages": [ToolMessage(
-                content=json.dumps({
-                    "dataset_id": dataset_id,
-                    "path": abs_path,
-                    "rel_path": f"datasets/{dataset_id}.parquet",
-                    "size_bytes": size_bytes,
-                    "size_mb": round(size_bytes / (1024 * 1024), 3),
-                    "ext": "parquet",
-                    "note": f"Dataset '{dataset_id}' already loaded. In code, use: pd.read_parquet('datasets/{dataset_id}.parquet')",
-                }),
-                tool_call_id=runtime.tool_call_id
-            )]})
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            content=json.dumps(
+                                {
+                                    "dataset_id": dataset_id,
+                                    "path": abs_path,
+                                    "rel_path": f"datasets/{dataset_id}.parquet",
+                                    "size_bytes": size_bytes,
+                                    "size_mb": round(size_bytes / (1024 * 1024), 3),
+                                    "ext": "parquet",
+                                    "note": f"Dataset '{dataset_id}' already loaded. In code, use: pd.read_parquet('datasets/{dataset_id}.parquet')",
+                                }
+                            ),
+                            tool_call_id=runtime.tool_call_id,
+                        )
+                    ]
+                }
+            )
     except (json.JSONDecodeError, KeyError):
         # If check fails, continue to load anyway
         pass
@@ -153,53 +183,73 @@ print(json.dumps(result))
 
         region = os.getenv("AWS_REGION", "eu-central-1")
         s3 = boto3.client(
-            "s3",
-            region_name=region,
-            config=Config(signature_version='s3v4')
+            "s3", region_name=region, config=Config(signature_version="s3v4")
         )
         input_bucket = os.getenv("S3_BUCKET")
         if not input_bucket:
-            return Command(update={"messages": [ToolMessage(
-                content="Error: Missing S3_BUCKET environment variable.",
-                tool_call_id=runtime.tool_call_id
-            )]})
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            content="Error: Missing S3_BUCKET environment variable.",
+                            tool_call_id=runtime.tool_call_id,
+                        )
+                    ]
+                }
+            )
 
         # Try S3 first (input/datasets/{dataset_id}.parquet)
         data_bytes = None
         s3_key = f"input/datasets/{dataset_id}.parquet"
-        
+
         try:
             s3.head_object(Bucket=input_bucket, Key=s3_key)
             data_bytes = s3.get_object(Bucket=input_bucket, Key=s3_key)["Body"].read()
         except Exception:
-            # Not in S3, try fetching from API 
-            try:                
-                data_bytes = await get_dataset_bytes(client=client, dataset_id=dataset_id)
-                
+            # Not in S3, try fetching from API
+            try:
+                data_bytes = await get_dataset_bytes(
+                    client=client, dataset_id=dataset_id
+                )
+
                 if not data_bytes:
-                    return Command(update={"messages": [ToolMessage(
-                        content=f"Error: Dataset '{dataset_id}' not found or returned empty data. Please check the dataset ID.",
-                        tool_call_id=runtime.tool_call_id
-                    )]})
-                    
+                    return Command(
+                        update={
+                            "messages": [
+                                ToolMessage(
+                                    content=f"Error: Dataset '{dataset_id}' not found or returned empty data. Please check the dataset ID.",
+                                    tool_call_id=runtime.tool_call_id,
+                                )
+                            ]
+                        }
+                    )
+
             except Exception as api_err:
-                return Command(update={"messages": [ToolMessage(
-                    content=f"Error: Failed to fetch dataset '{dataset_id}' from API. It may not exist or be unavailable. Error: {str(api_err)}",
-                    tool_call_id=runtime.tool_call_id
-                )]})
-            
+                return Command(
+                    update={
+                        "messages": [
+                            ToolMessage(
+                                content=f"Error: Failed to fetch dataset '{dataset_id}' from API. It may not exist or be unavailable. Error: {str(api_err)}",
+                                tool_call_id=runtime.tool_call_id,
+                            )
+                        ]
+                    }
+                )
+
             # after downloading from API, upload to S3 right away
-            try: 
+            try:
                 s3.put_object(
                     Bucket=input_bucket,
                     Key=s3_key,
                     Body=data_bytes,
-                    ContentType="application/parquet"
+                    ContentType="application/parquet",
                 )
             except Exception as upload_err:
                 # Log but don't fail - only upload to S3 failed, process can continue
-                print(f"Warning: Failed to upload dataset to S3: {upload_err}. Dataset is being loaded into workspace anyway...")
-        
+                print(
+                    f"Warning: Failed to upload dataset to S3: {upload_err}. Dataset is being loaded into workspace anyway..."
+                )
+
         # Write dataset directly to sandbox using executor.execute()
         data_b64 = base64.b64encode(data_bytes).decode("utf-8")
         # Use repr() to safely pass the base64 string in the f-string
@@ -236,68 +286,107 @@ result = {{
 print(json.dumps(result))
 """
         write_result = executor.execute(write_code)
-        
+
         stdout = write_result.get("stdout", "").strip()
         stderr = write_result.get("stderr", "")
-        
+
         if stderr:
-            return Command(update={"messages": [ToolMessage(
-                content=f"Error: Failed to write dataset to sandbox: {stderr}",
-                tool_call_id=runtime.tool_call_id
-            )]})
-        
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            content=f"Error: Failed to write dataset to sandbox: {stderr}",
+                            tool_call_id=runtime.tool_call_id,
+                        )
+                    ]
+                }
+            )
+
         try:
             result = json.loads(stdout) if stdout else {}
             if "error" in result:
-                return Command(update={"messages": [ToolMessage(
-                    content=f"Error: {result['error']}",
-                    tool_call_id=runtime.tool_call_id
-                )]})
+                return Command(
+                    update={
+                        "messages": [
+                            ToolMessage(
+                                content=f"Error: {result['error']}",
+                                tool_call_id=runtime.tool_call_id,
+                            )
+                        ]
+                    }
+                )
         except json.JSONDecodeError:
-            return Command(update={"messages": [ToolMessage(
-                content=f"Error: Failed to parse write result. Output: {stdout}",
-                tool_call_id=runtime.tool_call_id
-            )]})
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            content=f"Error: Failed to parse write result. Output: {stdout}",
+                            tool_call_id=runtime.tool_call_id,
+                        )
+                    ]
+                }
+            )
 
         # Add a clear note about the path to use in code
-        result["note"] = f"Dataset loaded. In code, use: pd.read_parquet('{result['rel_path']}')"
-        return Command(update={"messages": [ToolMessage(
-            content=json.dumps(result, ensure_ascii=False),
-            tool_call_id=runtime.tool_call_id
-        )]})
-        
+        result["note"] = (
+            f"Dataset loaded. In code, use: pd.read_parquet('{result['rel_path']}')"
+        )
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content=json.dumps(result, ensure_ascii=False),
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
     except Exception as e:
         # Catch-all for any unexpected errors
-        return Command(update={"messages": [ToolMessage(
-            content=f"Error: Unexpected error loading dataset '{dataset_id}': {str(e)}",
-            tool_call_id=runtime.tool_call_id
-        )]})    
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content=f"Error: Unexpected error loading dataset '{dataset_id}': {str(e)}",
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
 
 # -----------------
 # list loaded datasets tool
 # -----------------
 @tool(
     name_or_callable="list_loaded_datasets",
-    description="List datasets already loaded in the current workspace."
-)   
+    description="List datasets already loaded in the current workspace.",
+)
 def list_loaded_datasets_tool(runtime: ToolRuntime) -> Command:
     """
     Lists datasets already loaded in the current workspace.
-    NOTE: we do not list S3 datasets because we don't want the model to get confused. 
+    NOTE: we do not list S3 datasets because we don't want the model to get confused.
     BUT when we load, we check if datasets are present in S3 first and, if so, we download from there.
     """
-    
+
     thread_id = get_thread_id()
     if not thread_id:
-        return Command(update={"messages": [ToolMessage(
-            content="Error: thread_id not set in context. Cannot list datasets.",
-            tool_call_id=runtime.tool_call_id
-        )]})
-    
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content="Error: thread_id not set in context. Cannot list datasets.",
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
     try:
         session_id = str(thread_id)
         executor = get_or_create_executor(session_id)
-        
+
         # List datasets directly in the sandbox
         list_code = """
 import os
@@ -313,67 +402,106 @@ else:
 print(json.dumps(files))
 """
         result = executor.execute(list_code)
-        
+
         # Parse JSON from stdout
         stdout = result.get("stdout", "").strip()
         stderr = result.get("stderr", "")
-        
+
         if stderr:
-            return Command(update={"messages": [ToolMessage(
-                content=f"Error: Failed to list loaded datasets: {stderr}",
-                tool_call_id=runtime.tool_call_id
-            )]})
-        
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            content=f"Error: Failed to list loaded datasets: {stderr}",
+                            tool_call_id=runtime.tool_call_id,
+                        )
+                    ]
+                }
+            )
+
         try:
             dataset_ids = json.loads(stdout) if stdout else []
         except json.JSONDecodeError:
-            return Command(update={"messages": [ToolMessage(
-                content=f"Error: Failed to parse dataset list. Output: {stdout}",
-                tool_call_id=runtime.tool_call_id
-            )]})
-        
+            return Command(
+                update={
+                    "messages": [
+                        ToolMessage(
+                            content=f"Error: Failed to parse dataset list. Output: {stdout}",
+                            tool_call_id=runtime.tool_call_id,
+                        )
+                    ]
+                }
+            )
+
         # Return the result as a list of dataset_ids
-        return Command(update={"messages": [ToolMessage(
-            content=json.dumps(dataset_ids, ensure_ascii=False),
-            tool_call_id=runtime.tool_call_id
-        )]})
-        
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content=json.dumps(dataset_ids, ensure_ascii=False),
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
     except Exception as e:
-        return Command(update={"messages": [ToolMessage(
-            content=f"Error: Failed to list loaded datasets: {str(e)}",
-            tool_call_id=runtime.tool_call_id
-        )]})
-    
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content=f"Error: Failed to list loaded datasets: {str(e)}",
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
+
 # -----------------
 # export dataset tool
 # -----------------
 @tool(
     name_or_callable="export_dataset",
-    description="Use this to export a dataset from the sandbox given its path."
+    description="Use this to export a dataset from the sandbox given its path.",
 )
-def export_dataset_tool(dataset_path: Annotated[str, "The path of the dataset to export."],
-                   runtime: ToolRuntime) -> Command:
+def export_dataset_tool(
+    dataset_path: Annotated[str, "The path of the dataset to export."],
+    runtime: ToolRuntime,
+) -> Command:
     """Exports a dataset from the sandbox to S3 by executing upload code inside the sandbox.
-    
+
     This avoids Modal volume sync issues by reading the file directly from the sandbox
     filesystem where it was created, rather than trying to access it from a separate Modal function.
     """
     bucket = os.getenv("S3_BUCKET")
     if not bucket:
-        return Command(update={"messages": [ToolMessage(
-            content="Missing S3_BUCKET env var",
-            tool_call_id=runtime.tool_call_id
-        )]})
-    
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content="Missing S3_BUCKET env var",
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
     thread_id = get_thread_id()
     if not thread_id:
-        return Command(update={"messages": [ToolMessage(
-            content="Error: thread_id not set in context. Cannot export dataset.",
-            tool_call_id=runtime.tool_call_id
-        )]})
-    
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content="Error: thread_id not set in context. Cannot export dataset.",
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
     session_id = str(thread_id)
-    
+
     # Generate Python code to export from inside the sandbox
     # This avoids volume sync issues since the file is read from the same container that created it
     export_code = f"""
@@ -417,39 +545,60 @@ else:
 
 print(json.dumps(result))
 """
-    
+
     # Execute the export code in the sandbox
     executor = get_or_create_executor(session_id)
     result = executor.execute(export_code)
-    
+
     # The result will be in stdout as JSON
     stdout = result.get("stdout", "").strip()
     stderr = result.get("stderr", "")
-    
+
     # Parse the JSON result
     try:
         export_result = json.loads(stdout) if stdout else {}
     except json.JSONDecodeError:
         export_result = {"error": "Failed to parse export result"}
-    
+
     # If there's an error, return it as content
     if "error" in export_result or (stderr and not stdout):
-        return Command(update={"messages": [ToolMessage(
-            content=json.dumps(export_result if "error" in export_result else {"error": f"Export failed: {stderr}"}),
-            tool_call_id=runtime.tool_call_id
-        )]})
-    
+        return Command(
+            update={
+                "messages": [
+                    ToolMessage(
+                        content=json.dumps(
+                            export_result
+                            if "error" in export_result
+                            else {"error": f"Export failed: {stderr}"}
+                        ),
+                        tool_call_id=runtime.tool_call_id,
+                    )
+                ]
+            }
+        )
+
     # Return as artifact so frontend can display download link
     # Format matches what the code execution tool returns
-    artifacts = [export_result]  # List of artifact dicts with s3_key, name, mime, size, sha256
-    
+    artifacts = [
+        export_result
+    ]  # List of artifact dicts with s3_key, name, mime, size, sha256
+
     # Return JSON with success message and export details
-    return Command(update={"messages": [ToolMessage(
-        content=json.dumps({
-            "success": True,
-            "message": f"Dataset exported successfully: {export_result.get('name', 'unknown')}",
-            **export_result  # Include all export details (name, path, sha256, mime, size, s3_key, s3_url)
-        }, ensure_ascii=False),
-        tool_call_id=runtime.tool_call_id,
-        artifact=artifacts  # for frontend to display download link, artifacts go here, not in content
-    )]})
+    return Command(
+        update={
+            "messages": [
+                ToolMessage(
+                    content=json.dumps(
+                        {
+                            "success": True,
+                            "message": f"Dataset exported successfully: {export_result.get('name', 'unknown')}",
+                            **export_result,  # Include all export details (name, path, sha256, mime, size, s3_key, s3_url)
+                        },
+                        ensure_ascii=False,
+                    ),
+                    tool_call_id=runtime.tool_call_id,
+                    artifact=artifacts,  # for frontend to display download link, artifacts go here, not in content
+                )
+            ]
+        }
+    )

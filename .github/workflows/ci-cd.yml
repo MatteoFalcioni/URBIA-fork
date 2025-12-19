@@ -148,10 +148,10 @@ jobs:
           
           # Only test downgrade if we have a revision and it's not base
           if [ ! -z "$CURRENT" ] && [ "$CURRENT" != "base" ]; then
-            echo "Testing downgrade..."
-            alembic downgrade -1
+            echo "Testing downgrade to base and upgrade back to head..."
+            alembic downgrade base
             alembic upgrade head
-            echo "✅ Migration cycle successful"
+            echo "✅ Migration cycle successful (full down/up)"
           else
             echo "✅ At base or no migrations, skipping downgrade test"
           fi

@@ -28,7 +28,7 @@ def test_scan_and_upload_artifacts_uploads_and_returns_metadata(monkeypatch):
         # Change to temp directory so Path.cwd() / "artifacts" works
         original_cwd = os.getcwd()
         os.chdir(tmpdir)
-        
+
         try:
             artifacts_dir = Path("artifacts")
             # ensure directory exists
@@ -67,7 +67,7 @@ def test_scan_and_upload_artifacts_is_idempotent(monkeypatch):
         # Change to temp directory so Path.cwd() / "artifacts" works
         original_cwd = os.getcwd()
         os.chdir(tmpdir)
-        
+
         try:
             artifacts_dir = Path("artifacts")
             artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -89,5 +89,3 @@ def test_scan_and_upload_artifacts_is_idempotent(monkeypatch):
             assert len(fake_s3.put_calls) == 1
         finally:
             os.chdir(original_cwd)
-
-

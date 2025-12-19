@@ -124,7 +124,7 @@ ALWAYS use your `write_todos` tool while performing analysis. Even if an analysi
 """
 
 
-'''
+"""
  
 ## MAP TOOLS
 
@@ -142,5 +142,4 @@ AI: get_ortofoto(2020, 'Piazza Maggiore')
 **Example 2:**
 User: "I want to compare the ortofoto of Bologna in 2017 and 2023 of Giardini Margherita."
 AI: compare_ortofoto(2017, 2023, 'Giardini Margherita')
-'''
-
+"""
