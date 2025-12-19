@@ -48,13 +48,14 @@ import os
 from typing import List, Dict, Any
 
 import modal
-import pandas as pd
 
 # Import the Modal app from app.py
 # note: since we import like this, we need to deploy with: modal deploy -m backend.modal_runtime.functions
 from .app import app, image
 from .session import volume_name
+
 WORKSPACE_VOLUME = modal.Volume.from_name(volume_name(), create_if_missing=True)
+
 
 def _walk_files(base: Path, exts: set) -> List[Path]:
     files = []
@@ -64,9 +65,11 @@ def _walk_files(base: Path, exts: set) -> List[Path]:
                 files.append(p)
     return files
 
+
 def _session_base(session_id: str) -> Path:
     """Resolve per-session base dir; session_id must be provided by caller."""
     return Path("/workspace") / "sessions" / session_id
+
 
 # --------------------- (!) DEPRECATED (!) ---------------------
 # This function is deprecated. Use executor.execute() in sandbox_tools.py instead.
@@ -77,12 +80,11 @@ def _session_base(session_id: str) -> Path:
     timeout=60,
 )
 def list_loaded_datasets(
-    session_id: str,
-    subdir: str = "datasets"
+    session_id: str, subdir: str = "datasets"
 ) -> List[Dict[str, Any]]:
     """
     List datasets in the workspace. Return structured metadata.
-    
+
     DEPRECATED: Use executor.execute() to list datasets directly in the sandbox instead.
     This function suffers from Modal volume sync delays.
     """
@@ -93,14 +95,17 @@ def list_loaded_datasets(
     for p in _walk_files(base, exts):
         stat = p.stat()
         rel = str(p.relative_to(base))
-        out.append({
-            "path": rel,
-            "size_bytes": stat.st_size,
-            "size_mb": round(stat.st_size / (1024 * 1024), 3),
-            "mtime": stat.st_mtime,
-            "mime": mimetypes.guess_type(p.name)[0] or "application/octet-stream",
-        })
+        out.append(
+            {
+                "path": rel,
+                "size_bytes": stat.st_size,
+                "size_mb": round(stat.st_size / (1024 * 1024), 3),
+                "mtime": stat.st_mtime,
+                "mime": mimetypes.guess_type(p.name)[0] or "application/octet-stream",
+            }
+        )
     return out
+
 
 # --------------------- (!) DEPRECATED (!) ---------------------
 # This function is deprecated. Use executor.execute() in sandbox_tools.py instead.
@@ -120,7 +125,7 @@ def write_dataset_bytes(
 ) -> Dict[str, Any]:
     """
     Write dataset bytes to the workspace volume.
-    
+
     DEPRECATED: Use executor.execute() to write datasets directly in the sandbox instead.
     This function suffers from Modal volume sync delays, causing files to not be immediately
     visible to the running sandbox.
@@ -149,7 +154,8 @@ def write_dataset_bytes(
         "ext": ext.lower(),
     }
 
-    return summary   
+    return summary
+
 
 # --------------------- (!) DEPRECATED (!) ---------------------
 # This function is deprecated. Use executor.execute() in sandbox_tools.py instead.
@@ -160,14 +166,10 @@ def write_dataset_bytes(
     timeout=180,
     secrets=[modal.Secret.from_name("aws-credentials-IAM")],  # store AWS creds in Modal
 )
-def export_dataset(
-    dataset_path: str,
-    bucket: str,
-    session_id: str
-) -> Dict[str, Any]:
+def export_dataset(dataset_path: str, bucket: str, session_id: str) -> Dict[str, Any]:
     """
     Upload a file from the Modal workspace to S3 and return metadata.
-    
+
     DEPRECATED: Use executor.execute() to export datasets directly from the sandbox instead.
     This function is useless when exporting from a running sandbox because Modal volumes
     do not sync to outside functions unless we terminate the sandbox (which defeats the purpose).
@@ -178,7 +180,7 @@ def export_dataset(
 
     base = _session_base(session_id)
     full = base / dataset_path
-    
+
     # Retry logic to handle volume sync delays
     # Files created in sandbox take time to sync to volume before being visible to other functions
     max_retries = 20  # up to ~10s to allow Volume sync
@@ -188,7 +190,9 @@ def export_dataset(
         if attempt < max_retries - 1:
             time.sleep(0.5)
     else:
-        return {"error": f"File not found after {max_retries * 0.5}s (volume sync timeout): {dataset_path}"}
+        return {
+            "error": f"File not found after {max_retries * 0.5}s (volume sync timeout): {dataset_path}"
+        }
 
     try:
         data = full.read_bytes()
@@ -198,13 +202,12 @@ def export_dataset(
 
         # Datasets exported under a separate prefix
         s3_key = f"output/datasets/{sha256[:2]}/{sha256[2:4]}/{sha256}"
-        
+
         from botocore.client import Config
+
         region = os.getenv("AWS_REGION", "eu-central-1")
         s3_client = boto3.client(
-            "s3",
-            region_name=region,
-            config=Config(signature_version='s3v4')
+            "s3", region_name=region, config=Config(signature_version="s3v4")
         )
         s3_client.put_object(
             Bucket=bucket,

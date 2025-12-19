@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
 def get_database_url() -> str:
     url = os.getenv("DATABASE_URL")
     if not url:
@@ -20,11 +21,11 @@ def get_database_url() -> str:
 
 
 ENGINE = create_async_engine(get_database_url(), future=True, pool_pre_ping=True)
-ASYNC_SESSION_MAKER = async_sessionmaker(ENGINE, expire_on_commit=False, class_=AsyncSession)
+ASYNC_SESSION_MAKER = async_sessionmaker(
+    ENGINE, expire_on_commit=False, class_=AsyncSession
+)
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
     async with ASYNC_SESSION_MAKER() as session:
         yield session
-
-

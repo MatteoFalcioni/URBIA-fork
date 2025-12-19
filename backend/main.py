@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
     """
     global _checkpointer_cm
     from backend.graph.graph import get_checkpointer
-    
+
     saver, cm = await get_checkpointer()
     _checkpointer_cm = (saver, cm)  # Store as tuple for easy access
     yield
@@ -75,9 +75,10 @@ async def healthz() -> dict[str, str]:
     """
     return {"status": "ok"}
 
+
 # API routers: threads, messages, artifacts
-from backend.app import api as api_router_module
-from backend.artifacts import api as artifacts_api
+from backend.app import api as api_router_module  # noqa: E402
+from backend.artifacts import api as artifacts_api  # noqa: E402
 
 app.include_router(api_router_module.router, prefix="/api")
 app.include_router(artifacts_api.router, prefix="/api")

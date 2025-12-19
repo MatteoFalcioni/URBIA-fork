@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config, pool
@@ -15,9 +16,6 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Ensure project root is on sys.path so 'backend' package resolves
-import os
-import sys
-
 CURRENT_DIR = os.path.dirname(__file__)
 PROJECT_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, "..", "..", ".."))
 if PROJECT_ROOT not in sys.path:
@@ -81,5 +79,3 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     run_migrations_online()
-
-

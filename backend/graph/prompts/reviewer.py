@@ -1,4 +1,4 @@
-reviewer_prompt="""
+reviewer_prompt = """
 
 ## General instructions
 

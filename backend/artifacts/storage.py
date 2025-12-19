@@ -22,13 +22,13 @@ from backend.db.models import Artifact
 
 # ---------- Database Operations ----------
 
+
 async def find_artifact_by_sha(
-    session: AsyncSession,
-    sha256: str
+    session: AsyncSession, sha256: str
 ) -> Optional[Artifact]:
     """
     Look up an existing artifact by SHA-256 hash.
-    
+
     Used for deduplication - if we already have this file, return its metadata.
     """
     stmt = select(Artifact).where(Artifact.sha256 == sha256)
@@ -71,8 +71,7 @@ async def create_artifact(
 
 
 async def get_artifact_by_id(
-    session: AsyncSession,
-    artifact_id: uuid.UUID
+    session: AsyncSession, artifact_id: uuid.UUID
 ) -> Optional[Artifact]:
     """Retrieve an artifact by its UUID."""
     stmt = select(Artifact).where(Artifact.id == artifact_id)
@@ -82,9 +81,14 @@ async def get_artifact_by_id(
 
 # ---------------- S3 helpers (for presigned URLs and key resolution) ----------------
 
+
 def s3_key_for_artifact(artifact: Artifact) -> str:
     """Get S3 key for an artifact. Falls back to content-addressed path under output/artifacts."""
-    if artifact.meta and isinstance(artifact.meta, dict) and artifact.meta.get("s3_key"):
+    if (
+        artifact.meta
+        and isinstance(artifact.meta, dict)
+        and artifact.meta.get("s3_key")
+    ):
         return artifact.meta["s3_key"]
     # Default content-addressed layout
     return f"output/artifacts/{artifact.sha256[:2]}/{artifact.sha256[2:4]}/{artifact.sha256}"
@@ -96,17 +100,13 @@ def generate_presigned_url_from_s3_key(s3_key: str, expiry_seconds: int = 86400)
     Used for streaming artifacts during SSE (when driver returns raw s3_key).
     """
     from botocore.client import Config
-    
+
     bucket = os.getenv("S3_BUCKET", "lg-urban-prod")
     region = os.getenv("AWS_REGION", "eu-central-1")  # Default region
-    
+
     # Configure boto3 to use Signature Version 4
-    s3 = boto3.client(
-        "s3",
-        region_name=region,
-        config=Config(signature_version='s3v4')
-    )
-    
+    s3 = boto3.client("s3", region_name=region, config=Config(signature_version="s3v4"))
+
     return s3.generate_presigned_url(
         "get_object",
         Params={"Bucket": bucket, "Key": s3_key},
@@ -114,11 +114,12 @@ def generate_presigned_url_from_s3_key(s3_key: str, expiry_seconds: int = 86400)
     )
 
 
-def generate_artifact_download_url(artifact: Artifact, expiry_seconds: int = 86400) -> str:
+def generate_artifact_download_url(
+    artifact: Artifact, expiry_seconds: int = 86400
+) -> str:
     """
     Generate a presigned S3 URL for downloading the artifact from database record (accepts artifact object directly).
     Used when fetching historical artifacts from the database.
     """
     s3_key = s3_key_for_artifact(artifact)
     return generate_presigned_url_from_s3_key(s3_key, expiry_seconds)
-

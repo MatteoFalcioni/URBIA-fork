@@ -1,14 +1,14 @@
 from .client import BolognaOpenData
 from typing import Any, Dict, List, Optional
-import re, html
+import re
+import html
+
 
 # --------------
 # list datasets
 # --------------
 async def list_catalog(
-    client: BolognaOpenData,
-    q: Optional[str] = None,
-    limit: int = 20
+    client: BolognaOpenData, q: Optional[str] = None, limit: int = 20
 ) -> List[Dict[str, str]]:
     """
     List datasets
@@ -37,7 +37,10 @@ def _size_bytes(obj: Any) -> int:
     # robust: no JSON, just repr → bytes
     return len(repr(obj).encode("utf-8", errors="replace"))
 
-def _shallow_truncate(v: Any, max_chars: int = 200, max_list_items: int = 5, max_dict_items: int = 10) -> Any:
+
+def _shallow_truncate(
+    v: Any, max_chars: int = 200, max_list_items: int = 5, max_dict_items: int = 10
+) -> Any:
     # primitives
     if isinstance(v, (int, float, bool)) or v is None:
         return v
@@ -50,7 +53,10 @@ def _shallow_truncate(v: Any, max_chars: int = 200, max_list_items: int = 5, max
     if isinstance(v, (list, tuple)):
         n = len(v)
         keep = min(n, max_list_items)
-        head = [_shallow_truncate(x, max_chars, max_list_items, max_dict_items) for x in v[:keep]]
+        head = [
+            _shallow_truncate(x, max_chars, max_list_items, max_dict_items)
+            for x in v[:keep]
+        ]
         if n > keep:
             head.append(f"… (+{n-keep} more)")
         return head if isinstance(v, list) else tuple(head)
@@ -59,7 +65,10 @@ def _shallow_truncate(v: Any, max_chars: int = 200, max_list_items: int = 5, max
     if isinstance(v, dict):
         items = list(v.items())
         keep = min(len(items), max_dict_items)
-        kept = {k: _shallow_truncate(val, max_chars, max_list_items, max_dict_items) for k, val in items[:keep]}
+        kept = {
+            k: _shallow_truncate(val, max_chars, max_list_items, max_dict_items)
+            for k, val in items[:keep]
+        }
         if len(items) > keep:
             kept["…"] = f"[+{len(items)-keep} more keys]"
         return kept
@@ -68,12 +77,13 @@ def _shallow_truncate(v: Any, max_chars: int = 200, max_list_items: int = 5, max
     s = repr(v)
     return s if len(s) <= max_chars else s[:max_chars] + "…"
 
+
 async def preview_dataset(
     client,
     dataset_id: str,
     limit: int = 5,
-    max_bytes: int = 20_000,      # payload budget
-    max_chars: int = 200,         # per-cell cap
+    max_bytes: int = 20_000,  # payload budget
+    max_chars: int = 200,  # per-cell cap
     max_list_items: int = 5,
     max_dict_items: int = 10,
 ) -> Dict[str, Any]:
@@ -91,7 +101,10 @@ async def preview_dataset(
 
     for r in rows:
         # shallow truncation for every cell
-        safe_row = {k: _shallow_truncate(v, max_chars, max_list_items, max_dict_items) for k, v in r.items()}
+        safe_row = {
+            k: _shallow_truncate(v, max_chars, max_list_items, max_dict_items)
+            for k, v in r.items()
+        }
         if safe_row != r:
             truncated_cells = True
 
@@ -114,6 +127,7 @@ async def preview_dataset(
         },
     }
 
+
 # ----------------
 # get dataset description
 # ----------------
@@ -128,28 +142,21 @@ def _html_to_text(s: str) -> str:
     # unescape entities (&amp;, &egrave;, etc.)
     return html.unescape(s).strip()
 
-async def get_dataset_description(
-    client: BolognaOpenData,
-    dataset_id: str
-) -> str:
+
+async def get_dataset_description(client: BolognaOpenData, dataset_id: str) -> str:
     """
     Return plain-text description from metas.default.description (HTML stripped).
     """
     meta = await client.get_dataset(dataset_id)
-    raw = (
-        meta.get("metas", {})
-            .get("default", {})
-            .get("description", "")
-            or ""
-    )
+    raw = meta.get("metas", {}).get("default", {}).get("description", "") or ""
     return _html_to_text(raw)
+
 
 # ----------------
 # get dataset fields
 # ----------------
 async def get_dataset_fields(
-    client: BolognaOpenData,
-    dataset_id: str
+    client: BolognaOpenData, dataset_id: str
 ) -> List[Dict[str, str]]:
     """
     Return the dataset fields (columns) as a minimal schema:
@@ -171,18 +178,19 @@ async def get_dataset_fields(
         ftype = (f.get("type") or "").lower()
         label = f.get("label") or name
         if name:
-            out.append({"name": name, "description": desc, "type": ftype, "label": label})
+            out.append(
+                {"name": name, "description": desc, "type": ftype, "label": label}
+            )
     return out
+
 
 # ----------------
 # check if dataset is geo
 # ----------------
 GEO_TYPES = {"geo_point_2d", "geo_shape"}
 
-async def is_geo_dataset(
-    client: BolognaOpenData,
-    dataset_id: str
-) -> Dict[str, Any]:
+
+async def is_geo_dataset(client: BolognaOpenData, dataset_id: str) -> Dict[str, Any]:
     """
     Inspect dataset metadata and report geo capabilities.
 
@@ -216,7 +224,11 @@ async def is_geo_dataset(
     bbox_obj = default_meta.get("bbox")
     # bbox is a GeoJSON Feature with a Polygon; extract [minLon, minLat, maxLon, maxLat]
     try:
-        if bbox_obj and bbox_obj.get("geometry") and bbox_obj["geometry"].get("coordinates"):
+        if (
+            bbox_obj
+            and bbox_obj.get("geometry")
+            and bbox_obj["geometry"].get("coordinates")
+        ):
             coords = bbox_obj["geometry"]["coordinates"][0]  # outer ring
             lons = [c[0] for c in coords]
             lats = [c[1] for c in coords]
@@ -233,14 +245,16 @@ async def is_geo_dataset(
         "geom_types": geom_types,
         "geom_fields": geom_fields,
         "bbox": bbox_list,
-        "coordinate_order": "lon,lat" if is_geo else None,   # Opendatasoft convention
+        "coordinate_order": "lon,lat" if is_geo else None,  # Opendatasoft convention
     }
+
 
 # ----------------
 # get dataset time info
 # ----------------
 _TIME_TYPE_PREFERRED = {"date", "datetime"}
 _TIME_NAME_CANDIDATES = ["anno", "year", "anno_rif", "data", "date", "timestamp"]
+
 
 def _pick_time_column(fields: List[Dict[str, Any]]) -> Optional[str]:
     """
@@ -254,12 +268,16 @@ def _pick_time_column(fields: List[Dict[str, Any]]) -> Optional[str]:
         if ftype in _TIME_TYPE_PREFERRED:
             return f.get("name")
     # 2) fallback by common names (case-insensitive)
-    lower_map = {(f.get("name") or "").lower(): f.get("name")
-                 for f in fields if isinstance(f, dict)}
+    lower_map = {
+        (f.get("name") or "").lower(): f.get("name")
+        for f in fields
+        if isinstance(f, dict)
+    }
     for cand in _TIME_NAME_CANDIDATES:
         if cand in lower_map:
             return lower_map[cand]
     return None
+
 
 def _freq_label(url_or_label: Optional[str]) -> Optional[str]:
     """Compact label from DCAT frequency URIs (e.g., .../IRREG) or passthrough."""
@@ -269,6 +287,7 @@ def _freq_label(url_or_label: Optional[str]) -> Optional[str]:
     if "/" in s:
         return s.rstrip("/").split("/")[-1] or None
     return s
+
 
 async def get_dataset_time_info(
     client: BolognaOpenData,
@@ -296,9 +315,9 @@ async def get_dataset_time_info(
     meta = await client.get_dataset(dataset_id)
 
     fields = meta.get("fields") or []
-    metas  = meta.get("metas", {}) or {}
-    dflt   = metas.get("default", {}) or {}
-    dcat   = metas.get("dcat", {}) or {}
+    metas = meta.get("metas", {}) or {}
+    dflt = metas.get("default", {}) or {}
+    dcat = metas.get("dcat", {}) or {}
 
     # pick time column if not provided
     col = time_col or _pick_time_column(fields)
@@ -318,8 +337,8 @@ async def get_dataset_time_info(
             if t_min is not None and t_max is not None:
                 # keep raw strings/numbers as provided by API
                 start_val = str(t_min)
-                end_val   = str(t_max)
-                fallback  = False
+                end_val = str(t_max)
+                fallback = False
         except Exception:
             pass  # keep fallback=True
 
@@ -337,46 +356,50 @@ async def get_dataset_time_info(
         "records_count": dflt.get("records_count"),
     }
 
+
 # ----------------
 # estimate dataset size
 # ----------------
 async def is_dataset_too_heavy(
-    client: BolognaOpenData, 
-    dataset_id: str, 
-    threshold: int = 5_000_000  # 5MB
+    client: BolognaOpenData, dataset_id: str, threshold: int = 5_000_000  # 5MB
 ) -> bool:
     """
     Estimate dataset size based on record count and field count.
-    
+
     Args:
         client: Bologna OpenData client
         dataset_id: Dataset identifier
         threshold: Size threshold in bytes (default: 5MB)
-        
+
     Returns:
         True if dataset is too heavy, False otherwise
     """
     try:
         # Get dataset metadata
         dataset_info = await client.get_dataset(dataset_id)
-        total_records = dataset_info.get("metas", {}).get("default", {}).get("records_count", 0)
+        total_records = (
+            dataset_info.get("metas", {}).get("default", {}).get("records_count", 0)
+        )
         fields = dataset_info.get("fields", [])
-        
+
         if total_records == 0:
             return False  # Empty dataset, not heavy
-            
+
         # Estimate based on record count and field count
         # Conservative estimate: 2 bytes per field per record (for parquet compression)
         estimated_size = total_records * len(fields) * 2
-        
-        print(f"Dataset {dataset_id}: {total_records} records, {len(fields)} fields, estimated {estimated_size/ 1024 / 1024:.2f} MegaBytes")
-        
+
+        print(
+            f"Dataset {dataset_id}: {total_records} records, {len(fields)} fields, estimated {estimated_size/ 1024 / 1024:.2f} MegaBytes"
+        )
+
         return estimated_size > threshold
-        
+
     except Exception as e:
         # If we can't estimate, assume it's not too heavy and let it load
         print(f"Warning: Could not estimate size for {dataset_id}: {e}")
         return False
+
 
 # ----------------
 # export dataset as parquet
@@ -384,11 +407,11 @@ async def is_dataset_too_heavy(
 async def get_dataset_bytes(client: BolognaOpenData, dataset_id: str) -> bytes:
     """
     Download dataset as parquet bytes using the provided client (with HTTP/2 enabled).
-    
+
     Args:
         client: BolognaOpenData client instance (with HTTP/2 enabled)
         dataset_id: Dataset identifier
-        
+
     Returns:
         Raw parquet bytes
     """
@@ -398,7 +421,7 @@ async def get_dataset_bytes(client: BolognaOpenData, dataset_id: str) -> bytes:
         parquet_bytes = await client.export(dataset_id, "parquet")
         print(f"Download completed. Size: {len(parquet_bytes)} bytes")
         return parquet_bytes
-        
+
     except Exception as e:
         print(f"Error exporting dataset: {e}")
         raise

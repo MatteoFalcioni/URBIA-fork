@@ -14,22 +14,25 @@ Key choices:
 - Composite indexes optimized for timeline queries per thread.
 """
 
-import uuid
-from datetime import datetime
-from typing import Any, Optional
+import uuid  # noqa: E402
+from datetime import datetime  # noqa: E402
+from typing import Any, Optional  # noqa: E402
 
-from sqlalchemy import (
-    Column,
+from sqlalchemy import (  # noqa: E402
     String,
     DateTime,
     ForeignKey,
     text,
     Index,
-    UniqueConstraint,
     Text,
 )
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.dialects.postgresql import UUID, JSONB  # noqa: E402
+from sqlalchemy.orm import (  # noqa: E402
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+)
 
 
 class Base(DeclarativeBase):
@@ -51,24 +54,30 @@ class Thread(Base):
         DateTime(timezone=True), nullable=False, server_default=text("NOW()")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("NOW()"), server_onupdate=text("NOW()")
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+        server_onupdate=text("NOW()"),
     )
-    archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    archived_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     # Relationships
     messages: Mapped[list[Message]] = relationship(
         back_populates="thread", cascade="all, delete-orphan", passive_deletes=True
     )
     config: Mapped[Optional[Config]] = relationship(
-        back_populates="thread", uselist=False, cascade="all, delete-orphan", passive_deletes=True
+        back_populates="thread",
+        uselist=False,
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     artifacts: Mapped[list[Artifact]] = relationship(
         back_populates="thread", cascade="all, delete-orphan", passive_deletes=True
     )
 
-    __table_args__ = (
-        Index("ix_threads_user_updated", "user_id", "updated_at"),
-    )
+    __table_args__ = (Index("ix_threads_user_updated", "user_id", "updated_at"),)
 
 
 class Message(Base):
@@ -78,13 +87,18 @@ class Message(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     thread_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("threads.id", ondelete="CASCADE"), nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("threads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
     # Client-supplied idempotency key (e.g., a UUID the client generates per send)
     message_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
 
     # role determines rendering and lineage; store finalized assistant content only (no partial tokens)
-    role: Mapped[str] = mapped_column(String(32), nullable=False)  # user | assistant | system | tool
+    role: Mapped[str] = mapped_column(
+        String(32), nullable=False
+    )  # user | assistant | system | tool
     # content supports text or structured message blocks
     content: Mapped[Optional[Any]] = mapped_column(JSONB, nullable=True)
     tool_name: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
@@ -100,22 +114,24 @@ class Message(Base):
     # Relationships
     thread: Mapped[Thread] = relationship(back_populates="messages")
 
-    __table_args__ = (
-        Index("ix_messages_thread_created", "thread_id", "created_at"),
-    )
+    __table_args__ = (Index("ix_messages_thread_created", "thread_id", "created_at"),)
 
 
 class Config(Base):
     __tablename__ = "configs"
 
     thread_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("threads.id", ondelete="CASCADE"), primary_key=True
+        UUID(as_uuid=True),
+        ForeignKey("threads.id", ondelete="CASCADE"),
+        primary_key=True,
     )
     # Common generation settings per thread; nullable to allow defaults at runtime
     model: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     temperature: Mapped[Optional[float]] = mapped_column(nullable=True)
     system_prompt: Mapped[Optional[str]] = mapped_column(nullable=True)
-    context_window: Mapped[Optional[int]] = mapped_column(nullable=True)  # Max tokens for context (e.g., 128000 for gpt-4o)
+    context_window: Mapped[Optional[int]] = mapped_column(
+        nullable=True
+    )  # Max tokens for context (e.g., 128000 for gpt-4o)
     settings: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
 
     # Relationships
@@ -129,23 +145,25 @@ class Artifact(Base):
         UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
     )
     thread_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("threads.id", ondelete="CASCADE"), 
-        nullable=False, index=True
+        UUID(as_uuid=True),
+        ForeignKey("threads.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
     )
-    
+
     # Deduplication via SHA-256 fingerprint
     sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    
+
     # File metadata
     filename: Mapped[str] = mapped_column(String(512), nullable=False)
     mime: Mapped[str] = mapped_column(String(128), nullable=False)
     size: Mapped[int] = mapped_column(nullable=False)
-    
+
     # Session/run tracking for sandbox artifacts
     session_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     run_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     tool_call_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
-    
+
     # Arbitrary metadata (e.g., original container path, etc.)
     meta: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -154,7 +172,7 @@ class Artifact(Base):
 
     # Relationships
     thread: Mapped[Thread] = relationship(back_populates="artifacts")
-    
+
     __table_args__ = (
         Index("ix_artifacts_thread_created", "thread_id", "created_at"),
         Index("ix_artifacts_sha256", "sha256"),
@@ -164,16 +182,19 @@ class Artifact(Base):
 class UserAPIKeys(Base):
     __tablename__ = "user_api_keys"
 
-    user_id: Mapped[str] = mapped_column(String(255), primary_key=True, nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(
+        String(255), primary_key=True, nullable=False, index=True
+    )
     # Encrypted API keys - stored as base64 encoded encrypted strings
     openai_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     anthropic_key: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=text("NOW()")
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=text("NOW()"), server_onupdate=text("NOW()")
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+        server_onupdate=text("NOW()"),
     )
-
-

@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any
 
 BASE_URL = "https://opendata.comune.bologna.it/api/explore/v2.1"
 
+
 class BolognaOpenData:
     def __init__(self, timeout: float = 600.0):
         """
@@ -14,19 +15,17 @@ class BolognaOpenData:
         """
         # Configure connection pooling for efficiency
         self._limits = httpx.Limits(
-            max_keepalive_connections=10,
-            max_connections=20,
-            keepalive_expiry=60.0
+            max_keepalive_connections=10, max_connections=20, keepalive_expiry=60.0
         )
-        
+
         # Create timeout config with longer read timeout for large downloads
         self._timeout_config = httpx.Timeout(
             connect=10.0,  # Connection timeout
-            read=timeout,   # Read timeout (for large downloads)
-            write=10.0,    # Write timeout
-            pool=5.0       # Pool timeout
+            read=timeout,  # Read timeout (for large downloads)
+            write=10.0,  # Write timeout
+            pool=5.0,  # Pool timeout
         )
-        
+
         # Don't create client at init - create on first use (lazy initialization)
         self._client: Optional[httpx.AsyncClient] = None
         self._closed = False
@@ -34,7 +33,11 @@ class BolognaOpenData:
     @property
     def is_closed(self) -> bool:
         """Check if the client is closed."""
-        return self._closed or (self._client is not None and hasattr(self._client, 'is_closed') and self._client.is_closed)
+        return self._closed or (
+            self._client is not None
+            and hasattr(self._client, "is_closed")
+            and self._client.is_closed
+        )
 
     async def close(self):
         """
@@ -44,7 +47,7 @@ class BolognaOpenData:
         if not self.is_closed and self._client is not None:
             try:
                 await self._client.aclose()
-            except Exception as e:
+            except Exception:
                 # Ignore cleanup errors - connection might already be closed
                 # This is expected behavior when the OS forcibly closes connections
                 pass
@@ -60,12 +63,12 @@ class BolognaOpenData:
             # Create or recreate client
             if self._client is not None:
                 await self.close()  # Clean up old client
-            
+
             self._client = httpx.AsyncClient(
                 base_url=BASE_URL,
                 timeout=self._timeout_config,
                 limits=self._limits,
-                http2=True  # Enable HTTP/2 for better performance
+                http2=True,  # Enable HTTP/2 for better performance
             )
             self._closed = False
 
@@ -83,6 +86,7 @@ class BolognaOpenData:
             # This is a fallback - proper cleanup should use close() or context manager
             try:
                 import asyncio
+
                 if asyncio.get_event_loop().is_running():
                     # Can't run async code in destructor if loop is running
                     pass
@@ -96,7 +100,7 @@ class BolognaOpenData:
         q: Optional[str] = None,
         where: Optional[str] = None,
         limit: int = 20,
-        offset: int = 0
+        offset: int = 0,
     ) -> Dict[str, Any]:
         """
         Search the catalog (list datasets).
@@ -197,7 +201,9 @@ class BolognaOpenData:
             of rows, so always filter.
         """
         params = {"select": select, "limit": limit, "offset": offset}
-        if where:   # we won't use where in agentic workflows, we'll take it out when using this as a @tool
+        if (
+            where
+        ):  # we won't use where in agentic workflows, we'll take it out when using this as a @tool
             params["where"] = where
         if order_by:
             params["order_by"] = order_by
@@ -219,11 +225,7 @@ class BolognaOpenData:
                 return r.json()
             raise
 
-    async def export(
-        self,
-        dataset_id: str,
-        fmt: str = "parquet"
-    ) -> bytes:
+    async def export(self, dataset_id: str, fmt: str = "parquet") -> bytes:
         """
         Download the full dataset in one file (no row limit).
 
@@ -244,9 +246,7 @@ class BolognaOpenData:
         await self._ensure_client_ready()
         try:
             # Use larger chunk size for faster downloads
-            r = await self._client.get(
-                f"/catalog/datasets/{dataset_id}/exports/{fmt}"
-            )
+            r = await self._client.get(f"/catalog/datasets/{dataset_id}/exports/{fmt}")
             r.raise_for_status()
             return r.content
         except (RuntimeError, ConnectionError) as e:
