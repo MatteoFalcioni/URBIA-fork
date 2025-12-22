@@ -80,9 +80,29 @@ class SandboxExecutor:
             result_line = next(iter(self.process.stdout), None)
 
             if not result_line:
+                # Try to read stderr to see why the driver terminated
+                stderr_lines = []
+                try:
+                    # Read all available stderr lines (non-blocking)
+                    for line in self.process.stderr:
+                        stderr_lines.append(line)
+                        if len(stderr_lines) >= 50:  # Limit to prevent hanging
+                            break
+                except Exception:
+                    pass
+                
+                stderr_output = "".join(stderr_lines) if stderr_lines else "No stderr output captured"
+                
+                # Check if process is still running
+                try:
+                    returncode = self.process.returncode
+                    process_status = f"Process returncode: {returncode}"
+                except Exception:
+                    process_status = "Process status unknown"
+                
                 return {
                     "stdout": "",
-                    "stderr": "Driver process terminated unexpectedly",
+                    "stderr": f"Driver process terminated unexpectedly.\n{process_status}\nDriver stderr:\n{stderr_output}",
                     "artifacts": [],
                 }
 
