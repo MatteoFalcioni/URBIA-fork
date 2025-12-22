@@ -1,5 +1,7 @@
 # RDS Connection Guide
 
+We are able to use RDS as storage system if we want to scale this application further (horizontally). Right now we are not using it, but in this folder you'll find some instructions and info on how to do that.
+
 ## Overview
 
 Our RDS database is **private** (not publicly accessible), which is the secure AWS best practice. To connect from laptop, we must use an **SSH tunnel** through a bastion host.

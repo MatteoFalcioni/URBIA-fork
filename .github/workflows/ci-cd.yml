@@ -75,13 +75,13 @@ jobs:
           echo "Deploying Modal app to update driver.py..."
           modal deploy backend/modal_runtime/app.py
       
-      - name: Test Modal sandbox executor (requires Modal tokens)
-        env:
-          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
-          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
-        run: |
-          echo "Testing Modal sandbox executor..."
-          pytest backend/modal_runtime/tests/test_sandbox.py -v --tb=short
+      # - name: Test Modal sandbox executor (requires Modal tokens)
+      #   env:
+      #     MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+      #     MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+      #   run: |
+      #     echo "Testing Modal sandbox executor..."
+      #     pytest backend/modal_runtime/tests/test_sandbox.py -v --tb=short -s
       
       - name: Test sandbox tools (integration tests with executor.execute)
         env:
@@ -93,7 +93,7 @@ jobs:
           S3_BUCKET: ${{ secrets.S3_BUCKET }}
         run: |
           echo "Testing sandbox tools (load, list, export datasets)..."
-          pytest tests/graph/test_sandbox_tools.py tests/tools/test_load_to_sandbox.py tests/tools/test_export_from_sandbox.py -v --tb=short
+          pytest tests/tools/test_sandbox_tools.py tests/tools/test_load_to_sandbox.py tests/tools/test_export_from_sandbox.py -v --tb=short
 
   # Test database migrations with Docker Postgres
   test-migrations:

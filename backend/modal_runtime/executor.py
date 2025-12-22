@@ -42,8 +42,9 @@ class SandboxExecutor:
         # Start driver with optional environment variables
         self.process = self.sandbox.exec(
             "python",
+            "-u",  # Force unbuffered output to prevent hangs in CI
             "/root/driver.py",
-            bufsize=1,  # CRITICAL: bufsize=1 for line buffering!
+            bufsize=0,  # CRITICAL: bufsize=0 for unbuffered I/O
             workdir=base_dir,  # Set working directory for driver process
             env=self.env,  # Pass custom env vars to driver process
         )
@@ -80,9 +81,29 @@ class SandboxExecutor:
             result_line = next(iter(self.process.stdout), None)
 
             if not result_line:
+                # Try to read stderr to see why the driver terminated
+                stderr_lines = []
+                try:
+                    # Read all available stderr lines (non-blocking)
+                    for line in self.process.stderr:
+                        stderr_lines.append(line)
+                        if len(stderr_lines) >= 50:  # Limit to prevent hanging
+                            break
+                except Exception:
+                    pass
+                
+                stderr_output = "".join(stderr_lines) if stderr_lines else "No stderr output captured"
+                
+                # Check if process is still running
+                try:
+                    returncode = self.process.returncode
+                    process_status = f"Process returncode: {returncode}"
+                except Exception:
+                    process_status = "Process status unknown"
+                
                 return {
                     "stdout": "",
-                    "stderr": "Driver process terminated unexpectedly",
+                    "stderr": f"Driver process terminated unexpectedly.\n{process_status}\nDriver stderr:\n{stderr_output}",
                     "artifacts": [],
                 }
 

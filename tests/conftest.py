@@ -29,7 +29,8 @@ def is_port_open(host: str, port: int, timeout: float = 1.0) -> bool:
     except Exception:
         return False
 
-
+# NOTE: the following test test is only required if using RDS as data storage system
+# See RDS/ folder or more info
 test_tunnel = False  # Skip tunnel management if test_tunnel is False
 @pytest.fixture(scope="session", autouse=True)
 def ensure_rds_tunnel():

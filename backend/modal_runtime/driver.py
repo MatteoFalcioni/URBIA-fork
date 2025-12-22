@@ -78,9 +78,6 @@ def scan_and_upload_artifacts(
 
 def driver_program():
     """Driver program that maintains Python state across executions."""
-    import boto3
-    from botocore.client import Config
-
     globals_dict = {}  # Persistent namespace for user code
     processed_artifacts = set()  # Track processed artifacts to avoid duplicates
 
@@ -89,6 +86,10 @@ def driver_program():
 
     # Initialize S3 client with Signature Version 4 (only if upload is enabled)
     if not disable_s3_upload:
+        # Import boto3 only when needed to avoid credential issues in CI
+        import boto3
+        from botocore.client import Config
+        
         region = os.getenv("AWS_REGION", "eu-central-1")
         s3_client = boto3.client(
             "s3", region_name=region, config=Config(signature_version="s3v4")
@@ -109,12 +110,21 @@ def driver_program():
     except Exception:
         pass
 
+    # DEBUG LOG
+    print("DEBUG: Driver starting...", file=sys.stderr, flush=True)
+
     while True:
         try:
+            # DEBUG LOG
+            print("DEBUG: Waiting for command on stdin...", file=sys.stderr, flush=True)
+            
             # Read command from stdin
             line = sys.stdin.readline()
             if not line:
+                print("Driver: EOF received, exiting gracefully", file=sys.stderr, flush=True)
                 break
+            
+            print(f"DEBUG: Received command length: {len(line)}", file=sys.stderr, flush=True)
 
             command = json.loads(line.strip())
 
@@ -137,12 +147,16 @@ def driver_program():
                     print(f"Execution Error: {e}", file=sys.stderr)
 
             # Scan and upload artifacts after execution
-            artifacts = scan_and_upload_artifacts(
-                processed_artifacts,
-                s3_bucket,
-                s3_client,
-                disable_upload=disable_s3_upload,
-            )
+            try:
+                artifacts = scan_and_upload_artifacts(
+                    processed_artifacts,
+                    s3_bucket,
+                    s3_client,
+                    disable_upload=disable_s3_upload,
+                )
+            except Exception as e:
+                print(f"Artifact scan error: {e}", file=sys.stderr, flush=True)
+                artifacts = []
 
             # Emit exactly one JSON line per command
             result = {
@@ -162,10 +176,14 @@ def driver_program():
             }
             print(json.dumps(error_result), flush=True)
         except Exception as e:
+            # Log the error to stderr for debugging, then send error response
+            print(f"DRIVER FATAL ERROR: {e}", file=sys.stderr, flush=True)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
             error_result = {
                 "error": f"Driver error: {e}",
                 "stdout": "",
-                "stderr": "",
+                "stderr": str(e),
                 "artifacts": [],
             }
             print(json.dumps(error_result), flush=True)

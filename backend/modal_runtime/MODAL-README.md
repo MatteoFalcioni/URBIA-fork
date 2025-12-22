@@ -14,7 +14,7 @@ app = modal.App("lg-urban-executor")
 
 and a **driver** in [driver.py](./driver.py). 
 
-
+**CRUCIAL**: you need to deploy these objects into the cloud with modal deploy backend/modal_runtime/app.py
 
 The purpose of this driver is to be always running while the sandbox exist, in order to keep it warm, and to redirect code input with stdin/stdout: it can do this since the driver is running *inside the sandbox*.
 
