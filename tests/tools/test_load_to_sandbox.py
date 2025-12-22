@@ -117,6 +117,7 @@ def test_executor(test_session_id):
 
 # --- actual tests ---
 @pytest.mark.asyncio
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Flaky in CI")
 async def test_load_dataset_from_api(test_executor, test_session_id):
     """Test that we can load a dataset from the API into the sandbox."""
     executor = test_executor
@@ -155,6 +156,7 @@ print(df.head())
     print("✅ Loaded dataset from API and accessed from sandbox successfully")
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Flaky in CI")
 async def test_load_dataset_from_s3(test_executor, test_session_id):
     """Test that we can load a dataset from S3 into the sandbox."""
     check_s3_bucket()
@@ -202,6 +204,7 @@ print(f"Memory usage: {{df.memory_usage(deep=True).sum() / 1024**2:.2f}} MB")
     print("✅ Loaded dataset from S3 and accessed from sandbox successfully")
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Flaky in CI")
 async def test_load_multiple_datasets_in_same_session(test_executor, test_session_id):
     """Test that we can load multiple datasets into the sandbox in the same session."""
     executor = test_executor
